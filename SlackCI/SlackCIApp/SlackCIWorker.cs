@@ -340,13 +340,13 @@ namespace SlackCIApp
                         // Check if this is a publickey error and try to help
                         if (pullResult.Message.Contains("Permission denied (publickey)"))
                         {
-                            SendSlackMessage(":key: Attempting to generate and configure SSH key for Bitbucket...");
+                            SendSlackMessage(":key: Attempting to generate and configure SSH key for GitHub...");
                             var (keyGenSuccess, sshPublicKey, keyGenMessage) = await sshService.GenerateMacSshKeyAsync();
                             
                             if (keyGenSuccess)
                             {
                                 SendSlackMessage(":white_check_mark: SSH key generated successfully!");
-                                SendSlackMessage($":information_source: Please add this public key to your Bitbucket repository:\n```\n{sshPublicKey}\n```");
+                                SendSlackMessage($":information_source: Please add this public key to your GitHub repository:\n```\n{sshPublicKey}\n```");
                                 SendSlackMessage("Once you've added the key, try the build again.");
                             }
                             else

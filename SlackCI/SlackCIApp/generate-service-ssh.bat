@@ -139,7 +139,7 @@ echo ================================
 echo.
 echo NEXT STEPS:
 echo 1. Copy the public key above
-echo 2. Go to Bitbucket.org ^> Settings ^> SSH and GPG keys ^> Add SSH key
+echo 2. Go to GitHub.com ^> Settings ^> SSH and GPG keys ^> Add SSH key
 echo 3. Paste the public key and save
 echo 4. Run update-service.bat as Administrator
 echo.

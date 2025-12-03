@@ -548,8 +548,8 @@ namespace SlackCIApp
                 {
                     _logger.Error(ex, "Failed to resolve Mac hostname: {Hostname}. Error: {Message}", hostname, ex.Message);
                     return (false, $"Cannot resolve Mac hostname '{hostname}'. Please check:\n1. The Mac is running and on the network\n2. Try using the Mac's IP address instead\n3. Verify the hostname in System Settings > Sharing");
-                }                // Test SSH connection and Bitbucket key
-                _logger.Information("Testing SSH connection to Mac and Bitbucket...");
+                }                // Test SSH connection and GitHub key
+                _logger.Information("Testing SSH connection to Mac and GitHub...");
                 using var client = new SshClient(_settings.MacHostname, _settings.MacUsername, new PrivateKeyFile(_settings.MacKeyPath));
                 
                 try 
@@ -569,15 +569,15 @@ namespace SlackCIApp
                     testResult.Error.Contains("Permission denied", StringComparison.OrdinalIgnoreCase) || 
                     testResult.Error.Contains("No such file", StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger.Information("SSH key for Bitbucket not configured on Mac, generating new key...");
+                    _logger.Information("SSH key for GitHub not configured on Mac, generating new key...");
                     var keyResult = await _sshService.GenerateMacSshKeyAsync();
                     if (!keyResult.Success)
                     {
                         return (false, keyResult.Message);
                     }
 
-                    // Return the public key so it can be added to Bitbucket
-                    return (false, $"Generated new SSH key for Mac. Please add this public key to your Bitbucket account:\n\n{keyResult.PublicKey}");
+                    // Return the public key so it can be added to GitHub
+                    return (false, $"Generated new SSH key for Mac. Please add this public key to your GitHub account:\n\n{keyResult.PublicKey}");
                 }
 
                 return (true, "Mac SSH configuration verified.");
@@ -693,12 +693,12 @@ namespace SlackCIApp
                     catch (Exception ex)
                     {
                         _logger.Error(ex, "Failed to copy SSH key to service location");
-                        return (false, "SSH key not found and could not be copied. Please ensure you have generated an SSH key and added it to your Bitbucket account.");
+                        return (false, "SSH key not found and could not be copied. Please ensure you have generated an SSH key and added it to your GitHub account.");
                     }
                 }
                 else
                 {
-                    return (false, "SSH key not found. Please ensure you have generated an SSH key and added it to your Bitbucket account.");
+                    return (false, "SSH key not found. Please ensure you have generated an SSH key and added it to your GitHub account.");
                 }
             }
 
@@ -716,7 +716,7 @@ namespace SlackCIApp
                 return (false, "Could not read SSH key file. Please check file permissions.");
             }
 
-            // Ensure known_hosts exists and contains Bitbucket's host key
+            // Ensure known_hosts exists and contains GitHub's host key
             if (!File.Exists(knownHostsPath))
             {
                 _logger.Warning("known_hosts file not found at {Path}", knownHostsPath);
@@ -734,7 +734,7 @@ namespace SlackCIApp
             }
 
             // Test basic SSH connectivity
-            _logger.Information("Testing basic SSH connectivity to Bitbucket...");
+            _logger.Information("Testing basic SSH connectivity to GitHub...");
             var sshCommand = new ProcessStartInfo
             {
                 FileName = "ssh",

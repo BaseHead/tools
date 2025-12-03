@@ -49,7 +49,7 @@ Triggered via Slack messages or console input:
 
 ### Build Flow
 1. Clean previous build output (`basehead-pc` directory)
-2. Pull latest from Git (SSH authentication to Bitbucket)
+2. Pull latest from Git (SSH authentication to GitHub)
 3. Execute platform-specific build script
 4. Run Advanced Installer to create installer package
 5. Copy installer to network share (`\\BeeStation\home\Files\build-server`)
@@ -67,7 +67,7 @@ The app requires `appsettings.json` with `SlackCISettings` section containing:
 - Slack credentials (webhook URL, bot token, channel ID)
 - Build script paths for Windows/Mac/LLS
 - Git repository paths
-- SSH key paths for Bitbucket access
+- SSH key paths for GitHub access
 - Advanced Installer paths
 
 Settings are dynamically saved back to `appsettings.json` when installer paths are updated after builds.

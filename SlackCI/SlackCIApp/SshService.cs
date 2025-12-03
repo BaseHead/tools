@@ -258,11 +258,11 @@ namespace SlackCIApp
         }
 
         /// <summary>
-        /// Generates an SSH key on the Mac and returns the public key for adding to Bitbucket
+        /// Generates an SSH key on the Mac and returns the public key for adding to GitHub
         /// </summary>
         public async Task<(bool Success, string PublicKey, string Message)> GenerateMacSshKeyAsync()
         {
-            _logger.Information("Generating SSH key on Mac for Bitbucket access");
+            _logger.Information("Generating SSH key on Mac for GitHub access");
 
             try
             {
@@ -313,7 +313,7 @@ namespace SlackCIApp
                     return (false, string.Empty, $"Failed to set SSH key permissions: {result.Error}");
                 }
 
-                // Configure SSH config to use the key for Bitbucket
+                // Configure SSH config to use the key for GitHub
                 var sshConfig = @"
 Host github.com
     HostName github.com
