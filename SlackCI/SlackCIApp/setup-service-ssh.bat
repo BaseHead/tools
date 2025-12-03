@@ -108,7 +108,7 @@ echo 2. Go to GitHub.org ^> Settings ^> SSH and GPG keys ^> Add SSH key
 echo 3. Paste the public key and save
 echo.
 echo ================================
-echo PUBLIC KEY TO ADD TO BITBUCKET:
+echo PUBLIC KEY TO ADD TO GITHUB:
 echo ================================
 echo.
 type "%SERVICE_KEY_PATH%.pub"

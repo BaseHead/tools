@@ -130,7 +130,7 @@ echo Files created:
 dir "%SERVICE_SSH_DIR%"
 echo.
 echo ================================
-echo PUBLIC KEY TO ADD TO BITBUCKET:
+echo PUBLIC KEY TO ADD TO GITHUB:
 echo ================================
 echo.
 type "%SERVICE_KEY_PATH%.pub"
