@@ -1,0 +1,275 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AISoundGenerator.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:conv="using:AISoundGenerator.Converters"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="AISoundGenerator.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="AI Sound Generator"
+        Height="700"
+        Width="700"
+        Background="#0B0F12">
+
+    <Window.Resources>
+        <conv:EnumToBooleanConverter x:Key="EnumToBooleanConverter"/>
+    </Window.Resources>
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Bottom" Margin="10" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <TextBlock Text="API Key:" VerticalAlignment="Center" Width="80" TextAlignment="Right"/>
+            <TextBox Width="300" Text="{Binding ApiKey}" PasswordChar="•" Watermark="Enter your ElevenLabs API key"/>
+            <Button Content="Get KEY" Command="{Binding GetApiKeyCommand}" IsVisible="{Binding IsApiKeyEmpty}"/>
+            <Button Content="Reset Settings" Command="{Binding ResetSettingsCommand}"/>
+        </StackPanel>
+        
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+            <TextBlock Text="{Binding Greeting}" FontSize="22" Opacity=".6"/>
+            <!-- Generation Type Selection -->
+            <StackPanel Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center">
+                <RadioButton GroupName="GenerationType" 
+                           Content="SFX" 
+                           IsChecked="{Binding GenerationType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=SFX}"/>
+                <RadioButton GroupName="GenerationType" 
+                           Content="Speech" 
+                           IsChecked="{Binding GenerationType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Speech}"/>
+            </StackPanel>
+
+         
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBox Width="300" Name="PromptTextBox" Text="{Binding PromptText}" 
+                         Watermark="{Binding GenerationType, Converter={x:Static vm:GenerationTypeToWatermarkConverter.Instance}}" 
+                         IsEnabled="{Binding !IsGenerating}"/>
+                <Button Content="Generate" Command="{Binding GenerateCommand}" IsEnabled="{Binding !IsGenerating}"/>
+            </StackPanel>
+            
+            <!-- Speech-specific controls -->
+            <StackPanel IsVisible="{Binding GenerationType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Speech}">
+                <!-- Voice Selection -->
+                <Grid ColumnDefinitions="100,*" Margin="0,10,0,0">
+                    <TextBlock Grid.Column="0" Text="Voice:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"/>
+                    <Panel Grid.Column="1">
+                        <ComboBox Width="350" 
+                                 ItemsSource="{Binding AvailableVoices}"
+                                 SelectedItem="{Binding SelectedVoice}"
+                                 IsEnabled="{Binding !IsGenerating}"
+                                 IsVisible="{Binding !IsLoadingVoices}"
+                                 HorizontalContentAlignment="Left">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Width="280">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Name}" 
+                                                 Grid.Column="0"
+                                                 FontWeight="SemiBold"
+                                                 VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1">
+                                            <Run Text="{Binding Labels.Accent}"/>
+                                            <Run Text=" - "/>
+                                            <Run Text="{Binding Labels.Description}"
+                                                 FontStyle="Italic"/>
+                                        </TextBlock>
+                                        <ToolTip.Tip>
+                                            <StackPanel>
+                                                <TextBlock>
+                                                    <Run Text="Age: " FontWeight="SemiBold"/>
+                                                    <Run Text="{Binding Labels.Age}"/>
+                                                </TextBlock>
+                                                <TextBlock>
+                                                    <Run Text="Gender: " FontWeight="SemiBold"/>
+                                                    <Run Text="{Binding Labels.Gender}"/>
+                                                </TextBlock>
+                                                <TextBlock>
+                                                    <Run Text="Use Case: " FontWeight="SemiBold"/>
+                                                    <Run Text="{Binding Labels.UseCase}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </ToolTip.Tip>
+                                    </Grid>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <ProgressBar Width="300" 
+                                   Height="30"
+                                   IsIndeterminate="True"
+                                   IsVisible="{Binding IsLoadingVoices}"
+                                   VerticalAlignment="Center"/>
+                    </Panel>
+                </Grid>
+
+                <!-- Voice Settings -->
+                <StackPanel Margin="0,10,0,0" Spacing="10">
+                    <!-- Model Selection -->
+                    <Grid ColumnDefinitions="100,*">
+                        <TextBlock Grid.Column="0" Text="Model:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                                 ToolTip.Tip="Select the AI model for speech generation:&#x0a;- Monolingual: Standard English model&#x0a;- Multilingual: Supports multiple languages&#x0a;- Turbo: Faster generation with slightly lower quality"/>
+                        <ComboBox Grid.Column="1" Width="200" HorizontalAlignment="Left"
+                                 ItemsSource="{Binding AvailableModels}"
+                                 SelectedItem="{Binding SelectedModel}"
+                                 IsEnabled="{Binding !IsGenerating}"/>
+                    </Grid>
+
+                    <!-- Sound Quality -->
+                    <Grid ColumnDefinitions="100,*">
+                        <TextBlock Grid.Column="0" Text="Sound Quality:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                                 ToolTip.Tip="Sets the quality level of generated audio:&#x0a;- 16kHz/16bit: Standard quality, fastest generation&#x0a;- 32kHz/24bit: High quality, balanced speed and fidelity&#x0a;- 48kHz/24bit: Studio quality, audiophile grade, slower generation&#x0a;&#x0a;Higher quality settings use more API credits."/>
+                        <ComboBox Grid.Column="1" Width="150" HorizontalAlignment="Left"
+                                  ItemsSource="{Binding QualityOptions}"
+                                  SelectedItem="{Binding SelectedQuality}"
+                                  IsEnabled="{Binding !IsGenerating}"/>
+                    </Grid>
+                      <Grid ColumnDefinitions="100,*">
+                        <TextBlock Grid.Column="0" Text="Output Format:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                                 ToolTip.Tip="Selects the audio file format:&#x0a;- mp3: Common compressed format, smaller files&#x0a;- wav: Uncompressed, highest quality&#x0a;- ogg: Compressed alternative to mp3"/>
+                        <ComboBox Grid.Column="1" Width="100" HorizontalAlignment="Left"
+                                  ItemsSource="{Binding AudioFormats}"
+                                  SelectedItem="{Binding SelectedAudioFormat}"
+                                  IsEnabled="{Binding !IsGenerating}"/>
+                    </Grid>
+
+                    <!-- Stability Slider -->
+                    <Grid ColumnDefinitions="100,*">
+                        <TextBlock Grid.Column="0" Text="Stability:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                                 ToolTip.Tip="Controls voice consistency.&#x0a;Higher values (0.7-1.0): More stable, consistent voice but may sound flat&#x0a;Lower values (0.0-0.3): More voice variance but may sound less natural"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                            <Slider Width="200" 
+                                    Minimum="0" 
+                                    Maximum="1" 
+                                    Value="{Binding VoiceStability}"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="True"
+                                    IsEnabled="{Binding !IsGenerating}"/>
+                            <TextBlock Text="{Binding VoiceStability, StringFormat={}{0:F1}}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Similarity Boost Slider -->
+                    <Grid ColumnDefinitions="100,*">
+                        <TextBlock Grid.Column="0" Text="Clarity:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                                 ToolTip.Tip="Controls voice resemblance to the original voice sample.&#x0a;Higher values (0.7-1.0): More clear, accurate voice but may sound robotic&#x0a;Lower values (0.0-0.3): More natural but may diverge from the selected voice"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                            <Slider Width="200" 
+                                    Minimum="0" 
+                                    Maximum="1" 
+                                    Value="{Binding VoiceSimilarity}"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="True"
+                                    IsEnabled="{Binding !IsGenerating}"/>
+                            <TextBlock Text="{Binding VoiceSimilarity, StringFormat={}{0:F1}}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Style/Expression Slider -->
+                    <Grid ColumnDefinitions="100,*">
+                        <TextBlock Grid.Column="0" Text="Expression:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                                 ToolTip.Tip="Controls emotional expressiveness in the voice.&#x0a;Higher values (0.7-1.0): More emotional, dramatic delivery&#x0a;Lower values (0.0-0.3): More neutral, subdued delivery&#x0a;&#x0a;Great for adding emphasis, excitement or emotional tone to voices."/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                            <Slider Width="200" 
+                                    Minimum="0" 
+                                    Maximum="1" 
+                                    Value="{Binding VoiceExpression}"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="True"
+                                    IsEnabled="{Binding !IsGenerating}"/>
+                            <TextBlock Text="{Binding VoiceExpression, StringFormat={}{0:F1}}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Speaker Boost Toggle -->
+                    <Grid ColumnDefinitions="100,*">
+                        <TextBlock Grid.Column="0" Text="Speaker Boost:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                                 ToolTip.Tip="When enabled, enhances the clarity of the primary speaker in audio.&#x0a;Useful for recordings with background noise or multiple speakers.&#x0a;Helps isolate and enhance the main voice."/>
+                        <ToggleSwitch Grid.Column="1"
+                                     IsChecked="{Binding SpeakerBoost}"
+                                     OnContent="On"
+                                     OffContent="Off"
+                                     IsEnabled="{Binding !IsGenerating}"/>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+            
+            <!-- SFX-specific controls -->
+            <StackPanel IsVisible="{Binding GenerationType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=SFX}">
+                <!-- Duration Slider -->
+                <Grid ColumnDefinitions="130,*">
+                    <TextBlock Grid.Column="0" Text="Duration (seconds):" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                             ToolTip.Tip="Sets the length of the generated sound effect in seconds.&#x0a;Longer durations (>5s) work well for ambient sounds.&#x0a;Shorter durations (0.5-3s) are better for discrete sound effects."/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                        <Slider Width="200" 
+                                Minimum="0.5" 
+                                Maximum="22" 
+                                Value="{Binding DurationSeconds}"
+                                TickFrequency="0.5"
+                                IsSnapToTickEnabled="True"
+                                IsEnabled="{Binding !IsGenerating}"/>
+                        <TextBlock Text="{Binding DurationSeconds, StringFormat={}{0:F1}}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Prompt Influence ComboBox -->
+                <Grid ColumnDefinitions="130,*" Margin="0,10,0,0">
+                    <TextBlock Grid.Column="0" Text="Prompt Influence:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                             ToolTip.Tip="Controls how closely the sound follows your prompt description:&#x0a;High values (0.7-1.0): Follows prompt more strictly but less creative&#x0a;Low values (0.0-0.3): More variety but may deviate from prompt&#x0a;&#x0a;Recommended: 0.3-0.5 for balanced results"/>
+                    <ComboBox Grid.Column="1" Width="100" HorizontalAlignment="Left"
+                              ItemsSource="{Binding PromptInfluenceValues}"
+                              SelectedItem="{Binding PromptInfluence}"
+                              IsEnabled="{Binding !IsGenerating}"/>
+                </Grid>
+                
+                <!-- Seed Slider (Replaces the Text Input) -->
+                <Grid ColumnDefinitions="130,*" Margin="0,10,0,0">
+                    <TextBlock Grid.Column="0" Text="Seed:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                             ToolTip.Tip="Optional value to make generations reproducible.&#x0a;0 = Random sound each time.&#x0a;Any other value recreates the same sound pattern.&#x0a;&#x0a;Useful for iterating on a sound you like."/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                        <Slider Width="200" 
+                                Minimum="0" 
+                                Maximum="1000000" 
+                                Value="{Binding SeedValue}"
+                                TickFrequency="1000"
+                                IsSnapToTickEnabled="True"
+                                IsEnabled="{Binding !IsGenerating}"/>
+                        <TextBlock Text="{Binding DisplaySeedValue}" VerticalAlignment="Center" Width="60"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Variations ComboBox -->
+                <Grid ColumnDefinitions="130,*" Margin="0,15,0,0">
+                    <TextBlock Grid.Column="0" Text="Variations:" VerticalAlignment="Center" TextAlignment="Right" Margin="0,0,15,0"
+                             ToolTip.Tip="Number of sound variations to generate at once.&#x0a;Each variation uses the same prompt but produces different results.&#x0a;&#x0a;Higher values use more API credits."/>
+                    <ComboBox Grid.Column="1" Width="100" HorizontalAlignment="Left"
+                              ItemsSource="{Binding VariationValues}"
+                              SelectedItem="{Binding Variations}"
+                              IsEnabled="{Binding !IsGenerating}"/>
+                </Grid>
+            </StackPanel>
+
+            <!-- Progress Bar and Cancel Button -->
+            <StackPanel IsVisible="{Binding IsGenerating}" Spacing="5">
+                <TextBlock Text="{Binding ProgressText}" HorizontalAlignment="Center"/>
+                <Grid>
+                    <ProgressBar Value="{Binding ProgressValue}" 
+                                Maximum="100" 
+                                Height="20" 
+                                Width="300"
+                                ShowProgressText="True"/>
+                    <Button Content="Cancel" 
+                            HorizontalAlignment="Right" 
+                            Margin="400,0,10,0"
+                            Command="{Binding CancelCommand}"/>
+                </Grid>
+            </StackPanel>
+        </StackPanel>
+    </DockPanel>
+
+</Window>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSAppleEventsUsageDescription</key>
+	<string></string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.basehead.bh</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>basehead</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleExecutable</key>
+	<string>basehead</string>
+	<key>LSApplicationCategoryType</key>
+	<string></string>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.15</string>
+	<key>CFBundleShortVersionString</key>
+	<string>2025.03</string>
+	<key>CFBundleVersion</key>
+	<string>2025.03</string>
+	<key>CFBundleName</key>
+	<string>basehead</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.basehead.bh</string>
+	<key>CFBundleIconFile</key>
+	<string>basehead.icns</string>
+	<key>BundleIsRelocatable</key>
+	<false/>
+</dict>
+</plist>
