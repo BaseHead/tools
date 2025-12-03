@@ -160,7 +160,13 @@ namespace SlackCIApp
                     _logger.Debug("SSH test output: {Output}", sshOutput);
                     _logger.Debug("SSH test error: {Error}", sshError);
 
-                    if (process.ExitCode != 0 || sshError.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
+                    // GitHub returns exit code 1 with "successfully authenticated" message - that's actually success
+                    var combinedOutput = sshOutput + " " + sshError;
+                    if (combinedOutput.Contains("successfully authenticated", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.Information("SSH authentication successful");
+                    }
+                    else if (sshError.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.Error("SSH connection test failed. Exit code: {Code}, Error: {Error}", process.ExitCode, sshError);
                         return (false, $"SSH connection test failed. Please verify your SSH key and GitHub access. Details: {sshError}");
@@ -169,7 +175,8 @@ namespace SlackCIApp
                 catch (Exception ex)
                 {
                     _logger.Error(ex, "Error during SSH connectivity test");
-                    return (false, $"SSH connection test failed: {ex.Message}");                }
+                    return (false, $"SSH connection test failed: {ex.Message}");
+                }
 
                 _logger.Information("Basic SSH connectivity test passed, testing Git remote access...");
                 var testResult = await ExecuteGitCommandWindowsAsync("ls-remote", "--exit-code", "origin", "HEAD");
@@ -764,7 +771,15 @@ namespace SlackCIApp
                 _logger.Debug("SSH test output: {Output}", sshOutput);
                 _logger.Debug("SSH test error: {Error}", sshError);
 
-                if (process.ExitCode != 0 || sshError.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
+                // GitHub returns exit code 1 with "successfully authenticated" message - that's actually success
+                var combinedOutput = sshOutput + " " + sshError;
+                if (combinedOutput.Contains("successfully authenticated", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.Information("SSH authentication successful");
+                    return (true, "Windows SSH configuration verified successfully.");
+                }
+
+                if (sshError.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.Error("SSH connection test failed. Exit code: {Code}, Error: {Error}", process.ExitCode, sshError);
                     return (false, $"SSH connection test failed. Please verify your SSH key and GitHub access. Details: {sshError}");
