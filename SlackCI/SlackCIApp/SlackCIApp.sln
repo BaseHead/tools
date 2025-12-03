@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlackCIApp", "SlackCIApp.csproj", "{34E6D86E-AFCC-D5EF-4EDC-AC1DD9FE0F16}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{34E6D86E-AFCC-D5EF-4EDC-AC1DD9FE0F16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34E6D86E-AFCC-D5EF-4EDC-AC1DD9FE0F16}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34E6D86E-AFCC-D5EF-4EDC-AC1DD9FE0F16}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34E6D86E-AFCC-D5EF-4EDC-AC1DD9FE0F16}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9F4DD8D4-9353-463B-9BF3-65ED466ED5BD}
+	EndGlobalSection
+EndGlobal

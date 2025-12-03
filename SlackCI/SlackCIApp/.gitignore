@@ -1,0 +1,27 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Sensitive configuration - DO NOT COMMIT REAL SECRETS
+# Use appsettings.example.json as a template and create your own appsettings.json locally
+appsettings.json
+
+# Development settings with secrets
+appsettings.Development.json
+appsettings.Local.json
