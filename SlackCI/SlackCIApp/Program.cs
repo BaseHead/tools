@@ -620,7 +620,7 @@ namespace SlackCIApp
                     SendSlackMessage(settings, ":white_check_mark: Mac build completed successfully!");
 
                     // Set Mac installer path based on convention
-                    settings.MacInstallerPath = "/Users/steve/Desktop/BitBucket/basehead/build/Install basehead v2025.pkg";
+                    settings.MacInstallerPath = "/Users/steve/Desktop/GitHub/basehead/build/Install basehead v2025.pkg";
                     if (!string.IsNullOrEmpty(settings.MacInstallerPath))
                     {
                         var localPath = Path.Combine("downloads", Path.GetFileName(settings.MacInstallerPath));

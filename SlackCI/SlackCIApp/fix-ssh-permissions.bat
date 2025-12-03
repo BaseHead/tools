@@ -67,21 +67,21 @@ echo.
 
 REM Test SSH connection
 echo Testing SSH connection...
-echo Command: ssh -T -i "%SERVICE_KEY_PATH%" -o StrictHostKeyChecking=no git@bitbucket.org
+echo Command: ssh -T -i "%SERVICE_KEY_PATH%" -o StrictHostKeyChecking=no git@github.com
 echo.
 
-ssh -T -i "%SERVICE_KEY_PATH%" -o StrictHostKeyChecking=no git@bitbucket.org
+ssh -T -i "%SERVICE_KEY_PATH%" -o StrictHostKeyChecking=no git@github.com
 set SSH_RESULT=%errorlevel%
 
 echo.
 if %SSH_RESULT% equ 1 (
-    echo SSH connection test passed! ^(Exit code 1 is normal for Bitbucket^)
+    echo SSH connection test passed! ^(Exit code 1 is normal for GitHub^)
     echo The SSH key should now work for Git operations.
 ) else if %SSH_RESULT% equ 255 (
     echo SSH connection failed. Please check:
-    echo 1. The public key is added to your Bitbucket account
+    echo 1. The public key is added to your GitHub account
     echo 2. The key file permissions ^(should be fixed now^)
-    echo 3. Network connectivity to bitbucket.org
+    echo 3. Network connectivity to github.com
 ) else (
     echo SSH test completed with exit code: %SSH_RESULT%
 )
@@ -90,7 +90,7 @@ echo.
 echo Permissions fix completed!
 echo.
 echo Next steps:
-echo 1. Make sure your public key is added to Bitbucket
+echo 1. Make sure your public key is added to GitHub
 echo 2. Restart the SlackCI service: net stop SlackCIBuildServer ^& net start SlackCIBuildServer
 echo 3. Test a build to verify Git pull works
 echo.

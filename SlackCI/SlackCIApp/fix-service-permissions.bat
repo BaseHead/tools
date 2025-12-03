@@ -65,7 +65,7 @@ echo.
 
 REM Test as current user
 echo Testing SSH as current user...
-ssh -T -i "%SERVICE_KEY_PATH%" -o StrictHostKeyChecking=no -o UserKnownHostsFile="%SERVICE_SSH_DIR%\known_hosts" git@bitbucket.org 2>&1
+ssh -T -i "%SERVICE_KEY_PATH%" -o StrictHostKeyChecking=no -o UserKnownHostsFile="%SERVICE_SSH_DIR%\known_hosts" git@github.com 2>&1
 echo.
 
 REM Now let's configure the service to run as a specific user that we know works

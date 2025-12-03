@@ -19,7 +19,7 @@ echo.
 echo Generating NEW SSH keys for SlackCI service...
 echo Service SSH Directory: %SERVICE_SSH_DIR%
 echo.
-echo NOTE: This will generate a FRESH SSH key to avoid Bitbucket's "duplicate key" issue.
+echo NOTE: This will generate a FRESH SSH key to avoid GitHub's "duplicate key" issue.
 echo.
 
 REM Create service SSH directory
@@ -48,7 +48,7 @@ if %errorlevel% neq 0 (
 
 REM Generate a new SSH key specifically for the service
 echo Generating new SSH key for SlackCI service...
-echo This will create a unique key to avoid Bitbucket's duplicate key restriction.
+echo This will create a unique key to avoid GitHub's duplicate key restriction.
 echo.
 
 REM Remove old service keys if they exist
@@ -74,9 +74,9 @@ if exist "%USER_SSH_DIR%\known_hosts" (
     copy "%USER_SSH_DIR%\known_hosts" "%SERVICE_SSH_DIR%\known_hosts" >nul 2>&1
     echo known_hosts copied from user directory.
 ) else (
-    echo Creating known_hosts file with Bitbucket host key...
-    echo bitbucket.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIazEu89wgQZ4bqs3d63QSMzYVa0MuJ2e2KsTBuMioDO > "%SERVICE_SSH_DIR%\known_hosts"
-    echo bitbucket.org ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAubiN81eDcafrgMeLzaFPsw2kNvEcqTKl/VqLat/MaB33pZy0y3rJZtnqwR2qOOvbwKZYKiEO1O6VqNEBxKvJJelCq0dTXWT5pbO2gDXC6h6QDXCaHo6pOHGPUy+YBaGQRGuSusMEASYiWunYN0vCAI8QaXnWMXNMdFP3jHAJH0eDsoiGnLPBlBp4TN >> "%SERVICE_SSH_DIR%\known_hosts"
+    echo Creating known_hosts file with GitHub host key...
+    echo github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIazEu89wgQZ4bqs3d63QSMzYVa0MuJ2e2KsTBuMioDO > "%SERVICE_SSH_DIR%\known_hosts"
+    echo github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAubiN81eDcafrgMeLzaFPsw2kNvEcqTKl/VqLat/MaB33pZy0y3rJZtnqwR2qOOvbwKZYKiEO1O6VqNEBxKvJJelCq0dTXWT5pbO2gDXC6h6QDXCaHo6pOHGPUy+YBaGQRGuSusMEASYiWunYN0vCAI8QaXnWMXNMdFP3jHAJH0eDsoiGnLPBlBp4TN >> "%SERVICE_SSH_DIR%\known_hosts"
 )
 
 REM Set appropriate permissions on the service SSH directory
@@ -103,8 +103,8 @@ echo Service SSH Key Path: %SERVICE_KEY_PATH%
 echo Service SSH Directory: %SERVICE_SSH_DIR%
 echo.
 echo NEXT STEPS:
-echo 1. Copy the PUBLIC key below and add it to your Bitbucket account
-echo 2. Go to Bitbucket.org ^> Settings ^> SSH and GPG keys ^> Add SSH key
+echo 1. Copy the PUBLIC key below and add it to your GitHub account
+echo 2. Go to GitHub.org ^> Settings ^> SSH and GPG keys ^> Add SSH key
 echo 3. Paste the public key and save
 echo.
 echo ================================
@@ -115,10 +115,10 @@ type "%SERVICE_KEY_PATH%.pub"
 echo.
 echo ================================
 echo.
-echo After adding this key to Bitbucket:
+echo After adding this key to GitHub:
 echo - Update and restart the service using: update-service.bat
 echo - Test Git pull functionality
 echo.
-echo This is a UNIQUE key that should not conflict with existing keys in Bitbucket.
+echo This is a UNIQUE key that should not conflict with existing keys in GitHub.
 echo.
 pause

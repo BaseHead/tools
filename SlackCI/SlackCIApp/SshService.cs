@@ -286,18 +286,18 @@ namespace SlackCIApp
                 }
 
                 // Check if key already exists
-                result = await Task.Run(() => client.RunCommand("ls ~/.ssh/id_rsa_bitbucket.pub 2>/dev/null"));
+                result = await Task.Run(() => client.RunCommand("ls ~/.ssh/id_rsa_github.pub 2>/dev/null"));
                 if (result.ExitStatus == 0)
                 {
                     _logger.Information("SSH key already exists, reading public key");
-                    result = await Task.Run(() => client.RunCommand("cat ~/.ssh/id_rsa_bitbucket.pub"));
+                    result = await Task.Run(() => client.RunCommand("cat ~/.ssh/id_rsa_github.pub"));
                     return (true, result.Result.Trim(), "SSH key already exists");
                 }
 
                 // Generate new SSH key
                 _logger.Information("Generating new SSH key");
                 result = await Task.Run(() => client.RunCommand(
-                    "ssh-keygen -t rsa -b 4096 -C \"slackci@basehead.org\" -f ~/.ssh/id_rsa_bitbucket -N \"\""));
+                    "ssh-keygen -t rsa -b 4096 -C \"slackci@basehead.org\" -f ~/.ssh/id_rsa_github -N \"\""));
                 
                 if (result.ExitStatus != 0)
                 {
@@ -306,7 +306,7 @@ namespace SlackCIApp
                 }
 
                 // Set proper permissions
-                result = await Task.Run(() => client.RunCommand("chmod 600 ~/.ssh/id_rsa_bitbucket*"));
+                result = await Task.Run(() => client.RunCommand("chmod 600 ~/.ssh/id_rsa_github*"));
                 if (result.ExitStatus != 0)
                 {
                     _logger.Error("Failed to set SSH key permissions: {Error}", result.Error);
@@ -315,10 +315,10 @@ namespace SlackCIApp
 
                 // Configure SSH config to use the key for Bitbucket
                 var sshConfig = @"
-Host bitbucket.org
-    HostName bitbucket.org
+Host github.com
+    HostName github.com
     User git
-    IdentityFile ~/.ssh/id_rsa_bitbucket
+    IdentityFile ~/.ssh/id_rsa_github
     IdentitiesOnly yes";
 
                 result = await Task.Run(() => client.RunCommand($"echo '{sshConfig}' > ~/.ssh/config && chmod 600 ~/.ssh/config"));
@@ -329,7 +329,7 @@ Host bitbucket.org
                 }
 
                 // Read and return the public key
-                result = await Task.Run(() => client.RunCommand("cat ~/.ssh/id_rsa_bitbucket.pub"));
+                result = await Task.Run(() => client.RunCommand("cat ~/.ssh/id_rsa_github.pub"));
                 if (result.ExitStatus != 0 || string.IsNullOrEmpty(result.Result))
                 {
                     _logger.Error("Failed to read public key: {Error}", result.Error);
@@ -338,7 +338,7 @@ Host bitbucket.org
 
                 var publicKey = result.Result.Trim();
                 _logger.Information("Successfully generated SSH key");
-                return (true, publicKey, "SSH key generated successfully. Please add this public key to your Bitbucket account.");
+                return (true, publicKey, "SSH key generated successfully. Please add this public key to your GitHub account.");
             }
             catch (Exception ex)
             {

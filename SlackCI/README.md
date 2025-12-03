@@ -59,8 +59,8 @@ If you want to trigger builds by typing commands in your Slack channel:
 
 2. Verify the build script paths are correct:
    ```json
-   "WindowsBuildScriptPath": "C:\\Users\\carbo\\OneDrive\\Desktop\\BitBucket\\basehead\\basehead\\build.bat",
-   "MacBuildScriptPath": "/steve/Desktop/BitBucket/basehead/build.sh"
+   "WindowsBuildScriptPath": "C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\build.bat",
+   "MacBuildScriptPath": "/Users/steve/Desktop/GitHub/basehead/build.sh"
    ```
 
 3. For Mac builds via SSH, configure the connection settings:
@@ -174,7 +174,7 @@ To run SlackCI as a Windows Service so it's always monitoring for build commands
 
    # This will open a GUI where you configure:
    # - Path: [path to dotnet.exe] (typically C:\Program Files\dotnet\dotnet.exe)
-   # - Startup directory: C:\Users\carbo\OneDrive\Desktop\BitBucket\tools\SlackCI\SlackCIApp
+   # - Startup directory: C:\Users\carbo\Desktop\GitHub\tools\SlackCI\SlackCIApp
    # - Arguments: run
    ```
 

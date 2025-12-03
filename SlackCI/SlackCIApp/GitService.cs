@@ -122,7 +122,7 @@ namespace SlackCIApp
                 if (remoteResult.Output.Contains("https://", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.Information("Converting HTTPS remote to SSH...");
-                    var setUrlResult = await ExecuteGitCommandWindowsAsync("remote", "set-url", "origin", "git@bitbucket.org:basehead/basehead.git");
+                    var setUrlResult = await ExecuteGitCommandWindowsAsync("remote", "set-url", "origin", "git@github.com:BaseHead/basehead.git");
                     if (!setUrlResult.Success)
                     {
                         _logger.Error("Failed to set SSH remote URL: {Error}", setUrlResult.Output);
@@ -130,11 +130,11 @@ namespace SlackCIApp
                     }
                     _logger.Information("Successfully converted to SSH URL");
                 }                // First try a basic SSH connection test with verbose output
-                _logger.Information("Testing basic SSH connectivity to Bitbucket using key: {KeyPath}", _settings.WindowsKeyPath);
+                _logger.Information("Testing basic SSH connectivity to GitHub using key: {KeyPath}", _settings.WindowsKeyPath);
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "ssh",
-                    Arguments = $"-vvv -T -i \"{_settings.WindowsKeyPath}\" -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 -o IdentitiesOnly=yes git@bitbucket.org",
+                    Arguments = $"-vvv -T -i \"{_settings.WindowsKeyPath}\" -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 -o IdentitiesOnly=yes git@github.com",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -163,7 +163,7 @@ namespace SlackCIApp
                     if (process.ExitCode != 0 || sshError.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.Error("SSH connection test failed. Exit code: {Code}, Error: {Error}", process.ExitCode, sshError);
-                        return (false, $"SSH connection test failed. Please verify your SSH key and Bitbucket access. Details: {sshError}");
+                        return (false, $"SSH connection test failed. Please verify your SSH key and GitHub access. Details: {sshError}");
                     }
                 }
                 catch (Exception ex)
@@ -294,7 +294,7 @@ namespace SlackCIApp
                 if (remoteResult.Result.Contains("https://", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.Information("Converting HTTPS remote to SSH...");
-                    var setUrlCommand = $"cd {_settings.MacRepoPath} && git remote set-url origin git@bitbucket.org:basehead/basehead.git";
+                    var setUrlCommand = $"cd {_settings.MacRepoPath} && git remote set-url origin git@github.com:BaseHead/basehead.git";
                     var setUrlResult = await Task.Run(() => client.RunCommand(setUrlCommand));
                     if (setUrlResult.ExitStatus != 0)
                     {
@@ -562,7 +562,7 @@ namespace SlackCIApp
                     return (false, $"Cannot connect to Mac via SSH. Please check that:\n1. The Mac is running and accessible\n2. The hostname/IP is correct\n3. SSH is enabled on the Mac\nError: {ex.Message}");
                 }
 
-                var testResult = await Task.Run(() => client.RunCommand("ssh -T -o StrictHostKeyChecking=accept-new git@bitbucket.org"));
+                var testResult = await Task.Run(() => client.RunCommand("ssh -T -o StrictHostKeyChecking=accept-new git@github.com"));
                 
                 // If we get "permission denied", we need to generate a new key
                 if (testResult.ExitStatus != 0 || 
@@ -720,11 +720,11 @@ namespace SlackCIApp
             if (!File.Exists(knownHostsPath))
             {
                 _logger.Warning("known_hosts file not found at {Path}", knownHostsPath);
-                _logger.Information("Creating known_hosts file and adding bitbucket.org host key");
+                _logger.Information("Creating known_hosts file and adding github.com host key");
                 try
                 {
                     Directory.CreateDirectory(sshDir);
-                    File.WriteAllText(knownHostsPath, "bitbucket.org ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAubiN81eDcafrgMeLzaFPsw2kNvEcqTKl/VqLat/MaB33pZy0y3rJZtnqwR2qOOvbwKZYKiEO1O6VqNEBxKvJJelCq0dTXWT5pbO2gDXC6h6QDXCaHo6pOHGPUy+YBaGQRGuSusMEASYiWunYN0vCAI8QaXnWMXNMdFP3jHAJH0eDsoiGnLPBlBp4TN");
+                    File.WriteAllText(knownHostsPath, "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAubiN81eDcafrgMeLzaFPsw2kNvEcqTKl/VqLat/MaB33pZy0y3rJZtnqwR2qOOvbwKZYKiEO1O6VqNEBxKvJJelCq0dTXWT5pbO2gDXC6h6QDXCaHo6pOHGPUy+YBaGQRGuSusMEASYiWunYN0vCAI8QaXnWMXNMdFP3jHAJH0eDsoiGnLPBlBp4TN");
                 }
                 catch (Exception ex)
                 {
@@ -738,7 +738,7 @@ namespace SlackCIApp
             var sshCommand = new ProcessStartInfo
             {
                 FileName = "ssh",
-                Arguments = $"-T -i \"{sshKeyPath}\" -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o IdentitiesOnly=yes git@bitbucket.org",
+                Arguments = $"-T -i \"{sshKeyPath}\" -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o IdentitiesOnly=yes git@github.com",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -767,7 +767,7 @@ namespace SlackCIApp
                 if (process.ExitCode != 0 || sshError.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.Error("SSH connection test failed. Exit code: {Code}, Error: {Error}", process.ExitCode, sshError);
-                    return (false, $"SSH connection test failed. Please verify your SSH key and Bitbucket access. Details: {sshError}");
+                    return (false, $"SSH connection test failed. Please verify your SSH key and GitHub access. Details: {sshError}");
                 }
 
                 return (true, "Windows SSH configuration verified successfully.");
@@ -805,7 +805,7 @@ namespace SlackCIApp
                 if (remoteCheck.Output.Contains("https://", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.Information("Converting HTTPS remote to SSH...");
-                    var setUrlResult = await ExecuteGitCommandWindowsAsync("remote", "set-url", "origin", "git@bitbucket.org:basehead/basehead.git");
+                    var setUrlResult = await ExecuteGitCommandWindowsAsync("remote", "set-url", "origin", "git@github.com:BaseHead/basehead.git");
                     if (!setUrlResult.Success)
                     {
                         _logger.Error("Failed to set SSH remote URL: {Error}", setUrlResult.Output);

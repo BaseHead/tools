@@ -6,7 +6,7 @@ echo    sc stop "SlackCIBuildServer"
 echo    sc delete "SlackCIBuildServer"
 echo.
 echo 2. Create the new service with correct path:
-echo    sc create "SlackCIBuildServer" binPath= "\"C:\Users\carbo\Desktop\BitBucket\tools\SlackCI\SlackCIApp\publish\SlackCIApp.exe\" --service" DisplayName= "SlackCI Build Server" start= auto
+echo    sc create "SlackCIBuildServer" binPath= "\"C:\Users\carbo\Desktop\GitHub\tools\SlackCI\SlackCIApp\publish\SlackCIApp.exe\" --service" DisplayName= "SlackCI Build Server" start= auto
 echo.
 echo 3. Set service description:
 echo    sc description "SlackCIBuildServer" "Automated build server that listens for Slack commands to trigger builds"

@@ -2,7 +2,7 @@
 # Run this in PowerShell as Administrator
 
 $serviceName = "SlackCIBuildServer"
-$servicePath = "C:\Users\carbo\Desktop\BitBucket\tools\SlackCI\SlackCIApp\publish\SlackCIApp.exe"
+$servicePath = "C:\Users\carbo\Desktop\GitHub\tools\SlackCI\SlackCIApp\publish\SlackCIApp.exe"
 $displayName = "SlackCI Build Server"
 $description = "Automated build server that listens for Slack commands to trigger builds"
 
