@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   ExtensionBundleId="com.basehead.baseheadPPro"
+				           ExtensionBundleName="baseheadPPro"
+                   ExtensionBundleVersion="24.11.13"
+                   Version="6.0">
+  <!-- MAJOR-VERSION-UPDATE-MARKER -->
+  <ExtensionList>
+    <Extension Id="com.basehead.baseheadPPro"
+               Version="24.11.13"/>
+  </ExtensionList>
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="PPRO" Version="11.0"/>
+      <Host Name="PPRO" Version="12.0"/>
+      <Host Name="PPRO" Version="13.0"/>
+      <Host Name="PPRO" Version="14.0"/>
+      <Host Name="PPRO" Version="15.0"/>
+      <Host Name="PPRO" Version="16.0"/>
+    </HostList>
+    <LocaleList>
+      <Locale Code="All"/>
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="6.0"/>
+      <!-- MAJOR-VERSION-UPDATE-MARKER -->
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList>
+    <Extension Id="com.basehead.baseheadPPro">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./index.html</MainPath>
+          <ScriptPath>./PProPanel.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--allow-file-access</Parameter>
+            <Parameter>--allow-file-access-from-files</Parameter>
+            <Parameter>--allow-running-insecure-content</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+          <!--<StartOn>-->
+            <!-- PS dispatches this event on startup -->
+            <!--<Event>applicationActivate</Event>-->
+            <!-- PPro dispatches this event on startup -->
+            <!--<Event>com.adobe.csxs.events.ApplicationActivate</Event>-->
+          <!--</StartOn>-->
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>basehead Panel</Menu>
+          <Geometry>
+            <Size>
+              <Height>300</Height>
+              <Width>500</Width>
+            </Size>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

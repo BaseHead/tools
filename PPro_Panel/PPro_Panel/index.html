@@ -1,0 +1,384 @@
+﻿<!doctype html>
+<!--
+/*************************************************************************
+* ADOBE CONFIDENTIAL
+* ___________________
+*
+* Copyright 2020 Adobe
+* All Rights Reserved.
+*
+* NOTICE: Adobe permits you to use, modify, and distribute this file in
+* accordance with the terms of the Adobe license agreement accompanying
+* it. If you have received this file from a source other than Adobe,
+* then your use, modification, or distribution of it requires the prior
+* written permission of Adobe. 
+**************************************************************************/
+-->
+<html>
+<head>
+    <meta charset="utf-8">
+	<script src="./ext.js"></script>
+    <script src="./lib/CSInterface.js"></script>
+	<script src="./lib/jquery-1.9.1.js"></script>
+	<script src="./lib/Vulcan.js"></script>
+	<link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css">
+   
+    <script>
+	
+        var response = null;
+        var csLib = new CSInterface();
+        var http = require('http');
+        var lastStatusUpdate = new Date().getTime();
+        var listeningClients = new Array();
+
+		var cur_project = "";
+		function checkStatus2() {
+			csLib.evalScript('$._PPro_.getProjectName()', getProjectNameCallBackFunction);
+			function getProjectNameCallBackFunction(data)
+			{
+				if (data == cur_project)
+				{
+					return;
+				}
+				cur_project = data;
+				csLib.evalScript('$._PPro_.getProjectPath()', getProjectPathCallBackFunction);
+				function getProjectPathCallBackFunction(path2) {
+					for (var index in listeningClients)
+					{
+						var options = {
+							host: listeningClients[index].ip,
+							port: listeningClients[index].port,
+							path: "/",
+							method: 'POST',
+							headers: { 'projectname': data, 'projectpath': path2 },
+						};
+						var x = http.request(options, function (res) { });
+						x.end();
+					}
+				}
+			}
+		}
+		var Base64 = {
+
+
+			_keyStr: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
+
+
+			encode: function(input) {
+				var output = "";
+				var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+				var i = 0;
+
+				input = Base64._utf8_encode(input);
+
+				while (i < input.length) {
+
+					chr1 = input.charCodeAt(i++);
+					chr2 = input.charCodeAt(i++);
+					chr3 = input.charCodeAt(i++);
+
+					enc1 = chr1 >> 2;
+					enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+					enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+					enc4 = chr3 & 63;
+
+					if (isNaN(chr2)) {
+						enc3 = enc4 = 64;
+					} else if (isNaN(chr3)) {
+						enc4 = 64;
+					}
+
+					output = output + this._keyStr.charAt(enc1) + this._keyStr.charAt(enc2) + this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4);
+
+				}
+
+				return output;
+			},
+
+
+			decode: function(input) {
+				var output = "";
+				var chr1, chr2, chr3;
+				var enc1, enc2, enc3, enc4;
+				var i = 0;
+
+				input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+
+				while (i < input.length) {
+
+					enc1 = this._keyStr.indexOf(input.charAt(i++));
+					enc2 = this._keyStr.indexOf(input.charAt(i++));
+					enc3 = this._keyStr.indexOf(input.charAt(i++));
+					enc4 = this._keyStr.indexOf(input.charAt(i++));
+
+					chr1 = (enc1 << 2) | (enc2 >> 4);
+					chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+					chr3 = ((enc3 & 3) << 6) | enc4;
+
+					output = output + String.fromCharCode(chr1);
+
+					if (enc3 != 64) {
+						output = output + String.fromCharCode(chr2);
+					}
+					if (enc4 != 64) {
+						output = output + String.fromCharCode(chr3);
+					}
+
+				}
+
+				output = Base64._utf8_decode(output);
+
+				return output;
+
+			},
+
+			_utf8_encode: function(string) {
+				string = string.replace(/\r\n/g, "\n");
+				var utftext = "";
+
+				for (var n = 0; n < string.length; n++) {
+
+					var c = string.charCodeAt(n);
+
+					if (c < 128) {
+						utftext += String.fromCharCode(c);
+					}
+					else if ((c > 127) && (c < 2048)) {
+						utftext += String.fromCharCode((c >> 6) | 192);
+						utftext += String.fromCharCode((c & 63) | 128);
+					}
+					else {
+						utftext += String.fromCharCode((c >> 12) | 224);
+						utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+						utftext += String.fromCharCode((c & 63) | 128);
+					}
+
+				}
+
+				return utftext;
+			},
+
+			_utf8_decode: function(utftext) {
+				var string = "";
+				var i = 0;
+				var c = c1 = c2 = 0;
+
+				while (i < utftext.length) {
+
+					c = utftext.charCodeAt(i);
+
+					if (c < 128) {
+						string += String.fromCharCode(c);
+						i++;
+					}
+					else if ((c > 191) && (c < 224)) {
+						c2 = utftext.charCodeAt(i + 1);
+						string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+						i += 2;
+					}
+					else {
+						c2 = utftext.charCodeAt(i + 1);
+						c3 = utftext.charCodeAt(i + 2);
+						string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+						i += 3;
+					}
+
+				}
+
+				return string;
+			}
+
+		}
+
+        window.onload = function () {
+            onLoaded();
+
+            httpServer = http.createServer(function (req, res) {
+                var headerString = JSON.stringify(req.headers);
+                var headers = JSON.parse(headerString);
+                if (headers.importfiles) {
+                    var filename = headers.filename;
+                    var isBase64 = headers.filename.startsWith('base644');
+                    if (isBase64 === true)
+                    {
+                        var tmp = headers.filename.substring(7);
+                        filename = Base64.decode(unescape(tmp));
+                    }
+
+					display("importfiles - " + JSON.stringify(filename));
+                    csLib.evalScript('$._PPro_.importFiles(' + "'" + filename + "'" + ')', getImportFilesCallBackFunction);
+                    function getImportFilesCallBackFunction(data) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        var formatsPresetsObject = {
+                            size: data.length,
+                            errormsg: data
+                        };
+                        res.end(JSON.stringify(formatsPresetsObject));
+                    }
+                }
+				else if (headers.spotfiles) {
+					display("spotfiles - " + JSON.stringify(headers));
+                    csLib.evalScript('$._PPro_.spotToTopTracks('+ headers.spotfiles + ')', getSpotToTopTracksCallBackFunction);
+                    function getSpotToTopTracksCallBackFunction(data) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        var formatsPresetsObject = {
+                            size: data.length,
+                            errormsg: data
+                        };
+                        res.end(JSON.stringify(formatsPresetsObject));
+                    }
+                }
+				else if (headers.spotmultifiles) {
+					display("spotmultifiles - " + JSON.stringify(headers));
+                    csLib.evalScript('$._PPro_.spotToTracks(' + headers.tracknum + ')', getSpotToTracksCallBackFunction);
+                    function getSpotToTracksCallBackFunction(data) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        var formatsPresetsObject = {
+                            size: data.length,
+                            errormsg: data
+                        };
+                        res.end(JSON.stringify(formatsPresetsObject));
+                    }
+                }
+				else if (headers.gettargettrack) {
+					display("gettargettrack - " + JSON.stringify(headers));
+                    csLib.evalScript('$._PPro_.getTargetTrack()', getTargetTrackCallBackFunction);
+                    function getTargetTrackCallBackFunction(data) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        var formatsPresetsObject = {
+                            size: data.length,
+                            tracknum: data
+                        };
+                        res.end(JSON.stringify(formatsPresetsObject));
+                    }
+                }
+				else if (headers.getprojectpath)
+				{
+					//display("getprojectpath - " + JSON.stringify(headers));
+                    csLib.evalScript('$._PPro_.getProjectPath()', getProjectPathCallBackFunction);
+                    function getProjectPathCallBackFunction(data) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        var formatsPresetsObject = {
+                            size: data.length,
+                            projectpath: data
+                        };
+                        res.end(JSON.stringify(formatsPresetsObject));
+                    }
+				}
+				else if (headers.getmetadata)
+				{
+					display("getmetadata - " + JSON.stringify(headers));
+                    csLib.evalScript('$._PPro_.getMetadata()', getMetadataCallBackFunction);
+                    function getMetadataCallBackFunction(data) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        var formatsPresetsObject = {
+                            size: data.length,
+                            projectpath: data
+                        };
+                        res.end(JSON.stringify(formatsPresetsObject));
+                    }
+				}
+				else if (headers.setmetadata)
+				{
+                    var desc = headers.description;
+                    if (desc.startsWith('base644') === true)
+                    {
+                        var tmp = desc.substring(7);
+                        desc = Base64.decode(unescape(tmp));
+                    }
+
+                    var comments = headers.comments;
+                    if (comments.startsWith('base644'))
+                    {
+                        var tmp = comments.substring(7);
+                        comments = Base64.decode(unescape(tmp));
+                    }
+
+					display("setmetadata - " + JSON.stringify(headers));
+					csLib.evalScript('$._PPro_.modifyProjectItemMetadata(' + "'" + desc + "', '" + headers.audioin + "', '" + headers.audioout + "', '" + comments + "'" + ')', modifyProjectItemMetadataCallBackFunction);
+					function modifyProjectItemMetadataCallBackFunction(data) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        var formatsPresetsObject = {
+                            size: data.length,
+                            errormsg: data
+                        };
+                        res.end(JSON.stringify(formatsPresetsObject));
+                    }
+				}
+				else if (headers.poststatus) {
+					display("poststatus - " + JSON.stringify(headers));
+					var clientIPAddress = req.socket.remoteAddress;
+					var clientInfo = { ip: clientIPAddress, port: headers.port };
+					var alreadyFound = false;
+					for (index in listeningClients)
+					{
+						if (clientIPAddress == listeningClients[index].ip && headers.port == listeningClients[index].port) {
+							alreadyFound = true; 
+						}
+					}
+					if (alreadyFound == false) {
+						listeningClients.push(clientInfo);
+					}
+
+					csLib.evalScript('$._PPro_.getProjectName()', getProjectNameCallBackFunction);
+                    function getProjectNameCallBackFunction(data) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        var formatsPresetsObject = {
+                            size: data.length + clientIPAddress.length,
+                            projectname: data,
+							clientipaddress: clientIPAddress
+                        };
+                        res.end(JSON.stringify(formatsPresetsObject));
+                    }
+				}
+				else {
+					display("other - " + JSON.stringify(headers));
+                }
+
+            }).listen(8007, '127.0.0.1'); // change listening IPhere
+
+            setInterval(function () {
+                checkStatus2();
+            }, 1000);
+        }
+
+		function display(str) {
+			//document.getElementById("ret").innerHTML = str;
+		}
+
+		function onCopyToClipboard()
+		{
+			var copyText = document.getElementById("myInput");
+			copyText.select();
+			document.execCommand("copy");
+			//alert("Copied the text: " + copyText.value);
+			var btn = document.getElementById("spanText");
+			btn.innerText = "Copied!";
+		}
+		
+		function RunEXE()
+		{
+		}  
+		
+		function onRefresh()
+		{
+			history.go(0);
+		}
+
+		
+    </script>
+</head>
+
+<body style="background:#1a1f23;">
+<input type="text" value="https://baseheadinc.com/kb/ppro/" id="myInput" readonly style="position:absolute;left:-200px;top:0px;">
+<br/>
+<center>
+       <td><img src="bhIconBlueV4.png" width=80 height=80 /></td> 
+        <h5 style="color:#D2E4F2;font-family:'Segoe UI';opacity: 0.8;">Visit the below link for Integration & Setup info with BaseHead</h5>
+        <h3 style="color:#ffffff;font-family:'Segoe UI';opacity: 0.8;">www.baseheadinc.com/kb/PPro/</h3>
+
+<p><button id="btnCopyLink" onClick="onCopyToClipboard()" style="background:#565A6A;font-family:'Segoe UI';width:90px;height:40px;border-style:solid;border-width:0px;border-color:white;border-radius: 6px;"><span style="color:#ffffff;font-family:'Segoe UI';" id="spanText">Copy Link</span></button></p>
+</center>
+<dev id="ret" />
+</body>
+</html>

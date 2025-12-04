@@ -1,0 +1,1 @@
+ZXPSignCmd.exe -selfSignedCert CN ShenYang "basehead" "steve" password cert_steve.p12
