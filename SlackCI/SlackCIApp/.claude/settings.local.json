@@ -1,16 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find:*)",
-      "Bash(grep:*)",
-      "Bash(git rm:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(git remote set-url:*)",
-      "Bash(gh auth:*)",
-      "Bash(ssh:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dir /s /b \"C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LicenseServer\\*.csproj\")",
+      "Bash(dir \"C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LicenseServer\"\")"
     ],
     "deny": [],
     "ask": []

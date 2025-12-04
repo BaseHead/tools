@@ -570,11 +570,19 @@ namespace SlackCIApp
                 }
 
                 var testResult = await Task.Run(() => client.RunCommand("ssh -T -o StrictHostKeyChecking=accept-new git@github.com"));
-                
-                // If we get "permission denied", we need to generate a new key
-                if (testResult.ExitStatus != 0 || 
-                    testResult.Error.Contains("Permission denied", StringComparison.OrdinalIgnoreCase) || 
-                    testResult.Error.Contains("No such file", StringComparison.OrdinalIgnoreCase))
+
+                _logger.Information("GitHub SSH test result - Exit: {ExitStatus}, Output: {Output}, Error: {Error}",
+                    testResult.ExitStatus, testResult.Result, testResult.Error);
+
+                // GitHub's ssh -T always returns exit code 1, but sends success message to stderr
+                // Check for success message first - if present, authentication worked
+                bool isAuthenticated = testResult.Error.Contains("successfully authenticated", StringComparison.OrdinalIgnoreCase) ||
+                                       testResult.Result.Contains("successfully authenticated", StringComparison.OrdinalIgnoreCase);
+
+                // If we get "permission denied" or "no such file", we need to generate a new key
+                if (!isAuthenticated &&
+                    (testResult.Error.Contains("Permission denied", StringComparison.OrdinalIgnoreCase) ||
+                     testResult.Error.Contains("No such file", StringComparison.OrdinalIgnoreCase)))
                 {
                     _logger.Information("SSH key for GitHub not configured on Mac, generating new key...");
                     var keyResult = await _sshService.GenerateMacSshKeyAsync();
@@ -585,6 +593,12 @@ namespace SlackCIApp
 
                     // Return the public key so it can be added to GitHub
                     return (false, $"Generated new SSH key for Mac. Please add this public key to your GitHub account:\n\n{keyResult.PublicKey}");
+                }
+
+                // If not authenticated and no specific error, report the actual error
+                if (!isAuthenticated)
+                {
+                    return (false, $"GitHub SSH authentication failed. Error: {testResult.Error}");
                 }
 
                 return (true, "Mac SSH configuration verified.");

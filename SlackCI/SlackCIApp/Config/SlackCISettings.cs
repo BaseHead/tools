@@ -19,7 +19,7 @@ namespace SlackCIApp.Config
         public string WindowsRepoPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead";
         public string MacRepoPath { get; set; } = "/Users/steve/Desktop/GitHub/basehead";
         public string LLSRepoPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LicenseServer";
-        public string GitBranch { get; set; } = "master";  // Default to master/main branch
+        public string GitBranch { get; set; } = "main";  // Default to main branch
         public bool EnableGitPullForService { get; set; } = true;  // Enable Git pull for basehead builds
         public string ServiceUserSshKeyPath { get; set; } = @"C:\ProgramData\SlackCI\.ssh\id_rsa";  // Service-specific SSH key path
         
@@ -47,7 +47,7 @@ namespace SlackCIApp.Config
         public string LLSInstallerPath { get; set; } = string.Empty;
           // Advanced Installer
         public string AdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\Installer\_buildInstaller2025.aip";
-        public string AdvancedInstallerExePath { get; set; } = @"C:\Program Files (x86)\Caphyon\Advanced Installer 21.8.2\bin\x86\AdvancedInstaller.com";
+        public string AdvancedInstallerExePath { get; set; } = @"C:\Program Files (x86)\Caphyon\Advanced Installer 22.2\bin\x86\AdvancedInstaller.com";
         public string LLSAdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LicenseServer\Installer\PC\LLS_Installer.aip";
         public string BuildVersion { get; set; } = "1.0.0";
     }

@@ -13,6 +13,8 @@ using SlackCIApp.Config;
 using Slack.Webhooks;
 using System.Text.Json;
 using Serilog;
+using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 namespace SlackCIApp
 {
@@ -268,6 +270,17 @@ namespace SlackCIApp
                     SendSlackMessage(":information_source: Git pull skipped (disabled for service mode)");
                 }
 
+                // Update version in csproj to today's date before building
+                var csprojUpdate = UpdateCsprojVersionToToday();
+                if (csprojUpdate.Success)
+                {
+                    SendSlackMessage($":calendar: {csprojUpdate.Message}");
+                }
+                else
+                {
+                    SendSlackMessage($":warning: Version update warning: {csprojUpdate.Message}");
+                }
+
                 using var process = new Process();
                 process.StartInfo = new ProcessStartInfo
                 {
@@ -276,9 +289,9 @@ namespace SlackCIApp
                     CreateNoWindow = false,
                     WorkingDirectory = Path.GetDirectoryName(_settings.WindowsBuildScriptPath)
                 };
-                
+
                 Log.Information("Executing Windows build script: {ScriptPath}", _settings.WindowsBuildScriptPath);
-                SendSlackMessage(":arrow_forward: Windows build starting...");
+                SendSlackMessage($":arrow_forward: Windows build v{csprojUpdate.Version} starting...");
                 process.Start();
                 await Task.Run(() => process.WaitForExit());
 
@@ -287,11 +300,22 @@ namespace SlackCIApp
                     Log.Information("Windows build completed successfully");
                     SendSlackMessage(":white_check_mark: Windows build completed successfully!");
 
+                    // Sync version from csproj to Advanced Installer before building
+                    var versionSync = SyncVersionToAdvancedInstaller();
+                    if (versionSync.Success)
+                    {
+                        SendSlackMessage($":label: {versionSync.Message}");
+                    }
+                    else
+                    {
+                        SendSlackMessage($":warning: Version sync warning: {versionSync.Message}");
+                    }
+
                     // Run Advanced Installer to build the PC installer
                     var advancedInstallerPath = _settings.AdvancedInstallerProjectPath;
                     if (File.Exists(advancedInstallerPath))
                     {
-                        await RunAdvancedInstaller(advancedInstallerPath, "PC", _settings.WindowsInstallerPath);
+                        await RunAdvancedInstaller(advancedInstallerPath, "PC", _settings.WindowsInstallerPath, versionSync.Version);
                     }
                     else
                     {
@@ -373,16 +397,67 @@ namespace SlackCIApp
                     Log.Information("Mac build completed successfully");
                     SendSlackMessage(":white_check_mark: Mac build completed successfully!");
 
-                    // Set Mac installer path based on convention
-                    _settings.MacInstallerPath = "/Users/steve/Desktop/GitHub/basehead/build/Install basehead v2025.pkg";
+                    // Get version from csproj for Mac installer filename
+                    var macVersionSync = SyncVersionToAdvancedInstaller();
+                    string macVersion = macVersionSync.Version;
+                    string macInstallerFileName = string.IsNullOrEmpty(macVersion)
+                        ? "Install basehead v2025.pkg"
+                        : $"Install basehead v{macVersion}.pkg";
+
+                    // Set Mac installer path based on convention with version
+                    _settings.MacInstallerPath = $"/Users/steve/Desktop/GitHub/basehead/build/{macInstallerFileName}";
                     if (!string.IsNullOrEmpty(_settings.MacInstallerPath))
                     {
-                        var localPath = Path.Combine("downloads", Path.GetFileName(_settings.MacInstallerPath));
-                        SendSlackMessage($":file_folder: Mac installer copied to cloud network drive with local script");
+                        // Download Mac installer via SCP and copy to BeeStation
+                        string localDownloadPath = Path.Combine(Directory.GetCurrentDirectory(), "downloads");
+                        if (!Directory.Exists(localDownloadPath))
+                        {
+                            Directory.CreateDirectory(localDownloadPath);
+                        }
+                        string localFilePath = Path.Combine(localDownloadPath, macInstallerFileName);
 
-                        // Add web download link
-                        string webDownloadUrl = "http://j8cd6qcvrjt956vxvyixiuoss2n6mes.quickconnect.to/sharing/fcRcMqktX";
-                        SendSlackMessage($":globe_with_meridians: Web download link: {webDownloadUrl}");
+                        Log.Information("Downloading Mac installer via SCP: {RemotePath} -> {LocalPath}", _settings.MacInstallerPath, localFilePath);
+                        SendSlackMessage($":arrow_down: Downloading Mac installer...");
+
+                        if (await sshService.DownloadInstallerAsync(_settings.MacInstallerPath, localFilePath))
+                        {
+                            var fileSize = new FileInfo(localFilePath).Length / (1024.0 * 1024.0);
+                            SendSlackMessage($":package: Mac installer downloaded: {macInstallerFileName} ({fileSize:F2} MB)");
+
+                            // Copy to BeeStation network path
+                            try
+                            {
+                                string networkPath = @"\\BeeStation\home\Files\build-server";
+                                string networkFilePath = Path.Combine(networkPath, macInstallerFileName);
+                                Log.Information("Copying Mac installer to network path: {NetworkPath}", networkFilePath);
+
+                                if (!Directory.Exists(networkPath))
+                                {
+                                    Directory.CreateDirectory(networkPath);
+                                }
+
+                                File.Copy(localFilePath, networkFilePath, true);
+                                SendSlackMessage($":file_folder: Mac installer copied to network: {macInstallerFileName}");
+
+                                // Add web download link
+                                string webDownloadUrl = "http://j8cd6qcvrjt956vxvyixiuoss2n6mes.quickconnect.to/sharing/fcRcMqktX";
+                                SendSlackMessage($":globe_with_meridians: Web download link: {webDownloadUrl}");
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error(ex, "Failed to copy Mac installer to network path: {Error}", ex.Message);
+                                SendSlackMessage($":warning: Failed to copy Mac installer to network path: {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            Log.Warning("Failed to download Mac installer via SCP");
+                            SendSlackMessage($":warning: Failed to download Mac installer. File may be on Mac at: {_settings.MacInstallerPath}");
+
+                            // Still show web download link
+                            string webDownloadUrl = "http://j8cd6qcvrjt956vxvyixiuoss2n6mes.quickconnect.to/sharing/fcRcMqktX";
+                            SendSlackMessage($":globe_with_meridians: Web download link: {webDownloadUrl}");
+                        }
                     }
                 }
                 else
@@ -419,6 +494,17 @@ namespace SlackCIApp
                 Log.Information("Skipping Git pull for LLS build (LLS is part of the main basehead repository)");
                 SendSlackMessage(":information_source: Skipping Git pull for LLS (part of main repository)");
 
+                // Update LLS version in csproj to today's date before building
+                var llsCsprojUpdate = UpdateLLSCsprojVersionToToday();
+                if (llsCsprojUpdate.Success)
+                {
+                    SendSlackMessage($":calendar: {llsCsprojUpdate.Message}");
+                }
+                else
+                {
+                    SendSlackMessage($":warning: LLS version update warning: {llsCsprojUpdate.Message}");
+                }
+
                 using var process = new Process();
                 process.StartInfo = new ProcessStartInfo
                 {
@@ -427,9 +513,9 @@ namespace SlackCIApp
                     CreateNoWindow = false,
                     WorkingDirectory = Path.GetDirectoryName(_settings.LLSBuildScriptPath)
                 };
-                
+
                 Log.Information("Executing LLS build script: {ScriptPath}", _settings.LLSBuildScriptPath);
-                SendSlackMessage(":arrow_forward: LLS build starting...");
+                SendSlackMessage($":arrow_forward: LLS build v{llsCsprojUpdate.Version} starting...");
                 process.Start();
                 await Task.Run(() => process.WaitForExit());
 
@@ -438,11 +524,22 @@ namespace SlackCIApp
                     Log.Information("LLS build completed successfully");
                     SendSlackMessage(":white_check_mark: LLS build completed successfully!");
 
+                    // Sync LLS version to Advanced Installer before building installer
+                    var llsVersionSync = SyncLLSVersionToAdvancedInstaller();
+                    if (llsVersionSync.Success)
+                    {
+                        SendSlackMessage($":label: {llsVersionSync.Message}");
+                    }
+                    else
+                    {
+                        SendSlackMessage($":warning: LLS version sync warning: {llsVersionSync.Message}");
+                    }
+
                     // Run Advanced Installer to build the LLS installer
                     var advancedInstallerPath = _settings.LLSAdvancedInstallerProjectPath;
                     if (File.Exists(advancedInstallerPath))
                     {
-                        await RunAdvancedInstaller(advancedInstallerPath, "LLS", _settings.LLSInstallerPath);
+                        await RunAdvancedInstaller(advancedInstallerPath, "LLS", _settings.LLSInstallerPath, llsVersionSync.Version);
                     }
                     else
                     {
@@ -467,12 +564,13 @@ namespace SlackCIApp
 
         #region Helper Methods
 
-        private async Task RunAdvancedInstaller(string projectPath, string buildType, string outputPath)
+        private async Task RunAdvancedInstaller(string projectPath, string buildType, string outputPath, string version = "")
         {
             try
             {
                 Log.Information($"Running Advanced Installer to build {buildType} installer: {{Path}}", projectPath);
-                SendSlackMessage($":gear: Creating {buildType} installer with Advanced Installer...");
+                string versionDisplay = string.IsNullOrEmpty(version) ? "" : $" v{version}";
+                SendSlackMessage($":gear: Creating {buildType} installer{versionDisplay} with Advanced Installer...");
                 var outputBuilder = new StringBuilder();
 
                 var appDir = Directory.GetCurrentDirectory();
@@ -575,7 +673,7 @@ namespace SlackCIApp
                     Log.Information($"{buildType} installer built successfully");
                     SendSlackMessage($":white_check_mark: {buildType} installer built successfully!");
                     
-                    await HandleInstallerOutput(projectPath, buildType, outputPath);
+                    await HandleInstallerOutput(projectPath, buildType, outputPath, version);
                 }
                 else
                 {
@@ -600,7 +698,7 @@ namespace SlackCIApp
             }
         }
 
-        private Task HandleInstallerOutput(string projectPath, string buildType, string settingsInstallerPath)
+        private Task HandleInstallerOutput(string projectPath, string buildType, string settingsInstallerPath, string version = "")
         {
             string installerDir = Path.GetDirectoryName(projectPath) ?? Directory.GetCurrentDirectory();
             string[] potentialOutputDirs = new[]
@@ -616,7 +714,9 @@ namespace SlackCIApp
             
             if (Directory.Exists(outputDir))
             {
-                string[] installerFiles = Directory.GetFiles(outputDir, "*.exe");
+                string[] installerFiles = Directory.GetFiles(outputDir, "*.exe")
+                    .Concat(Directory.GetFiles(outputDir, "*.msi"))
+                    .ToArray();
                 if (installerFiles.Length > 0)
                 {
                     var latestInstaller = installerFiles.OrderByDescending(f => new FileInfo(f).CreationTime).First();
@@ -632,20 +732,21 @@ namespace SlackCIApp
                     SaveSettings();
                     SendSlackMessage($":package: {buildType} installer built: {fileName} ({fileSize:F2} MB)");
 
-                    // Copy to network path
-                    try 
+                    // Copy to network path with versioned filename
+                    try
                     {
                         string networkPath = @"\\BeeStation\home\Files\build-server";
-                        string networkFilePath = Path.Combine(networkPath, fileName);
+                        string versionedFileName = GetVersionedFileName(fileName, version);
+                        string networkFilePath = Path.Combine(networkPath, versionedFileName);
                         Log.Information($"Copying {buildType} installer to network path: {{NetworkPath}}", networkFilePath);
-                        
+
                         if (!Directory.Exists(networkPath))
                         {
                             Directory.CreateDirectory(networkPath);
                         }
-                        
+
                         File.Copy(latestInstaller, networkFilePath, true);
-                        SendSlackMessage($":file_folder: {buildType} installer copied to network: {networkFilePath}");
+                        SendSlackMessage($":file_folder: {buildType} installer copied to network: {versionedFileName}");
 
                         // Add web download link
                         string webDownloadUrl = "http://j8cd6qcvrjt956vxvyixiuoss2n6mes.quickconnect.to/sharing/fcRcMqktX";
@@ -765,6 +866,271 @@ namespace SlackCIApp
         {
             _httpClient?.Dispose();
             base.Dispose();
+        }
+
+        /// <summary>
+        /// Syncs the version from the csproj file to the Advanced Installer .aip file
+        /// </summary>
+        private (bool Success, string Version, string Message) SyncVersionToAdvancedInstaller()
+        {
+            try
+            {
+                // Find the csproj file in the repo
+                string repoPath = _settings.WindowsRepoPath;
+                string csprojPath = Path.Combine(repoPath, "basehead", "basehead.csproj");
+
+                if (!File.Exists(csprojPath))
+                {
+                    Log.Warning("Could not find csproj file at: {Path}", csprojPath);
+                    return (false, "", $"Could not find csproj file at: {csprojPath}");
+                }
+
+                // Read version from csproj
+                var csprojDoc = XDocument.Load(csprojPath);
+                var versionElement = csprojDoc.Descendants("Version").FirstOrDefault();
+
+                if (versionElement == null)
+                {
+                    Log.Warning("No <Version> element found in csproj file");
+                    return (false, "", "No <Version> element found in csproj file");
+                }
+
+                string version = versionElement.Value;
+                Log.Information("Found version in csproj: {Version}", version);
+
+                // Update Advanced Installer .aip file
+                string aipPath = _settings.AdvancedInstallerProjectPath;
+                if (!File.Exists(aipPath))
+                {
+                    Log.Warning("Could not find Advanced Installer project at: {Path}", aipPath);
+                    return (false, version, $"Could not find Advanced Installer project at: {aipPath}");
+                }
+
+                string aipContent = File.ReadAllText(aipPath);
+
+                // Use regex to find and replace ProductVersion value
+                var regex = new Regex(@"(<ROW Property=""ProductVersion"" Value="")([^""]+)("")");
+                var match = regex.Match(aipContent);
+
+                if (!match.Success)
+                {
+                    Log.Warning("Could not find ProductVersion property in .aip file");
+                    return (false, version, "Could not find ProductVersion property in .aip file");
+                }
+
+                string oldVersion = match.Groups[2].Value;
+                if (oldVersion == version)
+                {
+                    Log.Information("Version already matches: {Version}", version);
+                    return (true, version, $"Version already up to date: {version}");
+                }
+
+                // Replace the version
+                string newContent = regex.Replace(aipContent, $"${{1}}{version}${{3}}");
+                File.WriteAllText(aipPath, newContent);
+
+                Log.Information("Updated Advanced Installer version from {OldVersion} to {NewVersion}", oldVersion, version);
+                return (true, version, $"Updated version from {oldVersion} to {version}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error syncing version to Advanced Installer");
+                return (false, "", $"Error syncing version: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Updates the version in basehead.csproj to today's date (YYYY.MM.DD format)
+        /// </summary>
+        private (bool Success, string Version, string Message) UpdateCsprojVersionToToday()
+        {
+            try
+            {
+                string repoPath = _settings.WindowsRepoPath;
+                string csprojPath = Path.Combine(repoPath, "basehead", "basehead.csproj");
+
+                if (!File.Exists(csprojPath))
+                {
+                    Log.Warning("Could not find csproj file at: {Path}", csprojPath);
+                    return (false, "", $"Could not find csproj file at: {csprojPath}");
+                }
+
+                // Generate today's date as version
+                string todayVersion = DateTime.Now.ToString("yyyy.MM.dd");
+
+                // Read and parse csproj
+                var csprojDoc = XDocument.Load(csprojPath);
+                var versionElement = csprojDoc.Descendants("Version").FirstOrDefault();
+
+                if (versionElement == null)
+                {
+                    Log.Warning("No <Version> element found in csproj file");
+                    return (false, "", "No <Version> element found in csproj file");
+                }
+
+                string oldVersion = versionElement.Value;
+                if (oldVersion == todayVersion)
+                {
+                    Log.Information("Version already set to today's date: {Version}", todayVersion);
+                    return (true, todayVersion, $"Version already up to date: {todayVersion}");
+                }
+
+                // Update the version
+                versionElement.Value = todayVersion;
+                csprojDoc.Save(csprojPath);
+
+                Log.Information("Updated csproj version from {OldVersion} to {NewVersion}", oldVersion, todayVersion);
+                return (true, todayVersion, $"Updated version from {oldVersion} to {todayVersion}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating csproj version");
+                return (false, "", $"Error updating csproj version: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Creates a versioned filename for the installer
+        /// Example: "Install basehead v2025.exe" -> "Install basehead v2025.12.04.exe"
+        /// </summary>
+        private string GetVersionedFileName(string originalFileName, string version)
+        {
+            if (string.IsNullOrEmpty(version))
+                return originalFileName;
+
+            string extension = Path.GetExtension(originalFileName);
+            string nameWithoutExt = Path.GetFileNameWithoutExtension(originalFileName);
+
+            // Pattern: "Install basehead v2025" or similar - replace the version part
+            var versionPattern = new Regex(@"(.*\s+v?)(\d{4})(\.\d+)?(\.\d+)?$", RegexOptions.IgnoreCase);
+            var match = versionPattern.Match(nameWithoutExt);
+
+            if (match.Success)
+            {
+                // Replace with full version
+                return $"{match.Groups[1].Value}{version}{extension}";
+            }
+
+            // If no version pattern found, just append version before extension
+            return $"{nameWithoutExt} v{version}{extension}";
+        }
+
+        /// <summary>
+        /// Updates the version in LLS csproj to today's date (YYYY.MM.DD format)
+        /// </summary>
+        private (bool Success, string Version, string Message) UpdateLLSCsprojVersionToToday()
+        {
+            try
+            {
+                string csprojPath = Path.Combine(_settings.LLSRepoPath, "basehead.LicenseServer.csproj");
+
+                if (!File.Exists(csprojPath))
+                {
+                    Log.Warning("Could not find LLS csproj file at: {Path}", csprojPath);
+                    return (false, "", $"Could not find LLS csproj file at: {csprojPath}");
+                }
+
+                // Generate today's date as version
+                string todayVersion = DateTime.Now.ToString("yyyy.MM.dd");
+
+                // Read and parse csproj
+                var csprojDoc = XDocument.Load(csprojPath);
+                var versionElement = csprojDoc.Descendants("Version").FirstOrDefault();
+
+                if (versionElement == null)
+                {
+                    Log.Warning("No <Version> element found in LLS csproj file");
+                    return (false, "", "No <Version> element found in LLS csproj file");
+                }
+
+                string oldVersion = versionElement.Value;
+                if (oldVersion == todayVersion)
+                {
+                    Log.Information("LLS version already set to today's date: {Version}", todayVersion);
+                    return (true, todayVersion, $"LLS version already up to date: {todayVersion}");
+                }
+
+                // Update the version
+                versionElement.Value = todayVersion;
+                csprojDoc.Save(csprojPath);
+
+                Log.Information("Updated LLS csproj version from {OldVersion} to {NewVersion}", oldVersion, todayVersion);
+                return (true, todayVersion, $"Updated LLS version from {oldVersion} to {todayVersion}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating LLS csproj version");
+                return (false, "", $"Error updating LLS csproj version: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Syncs the version from LLS csproj to the LLS Advanced Installer .aip file
+        /// </summary>
+        private (bool Success, string Version, string Message) SyncLLSVersionToAdvancedInstaller()
+        {
+            try
+            {
+                // Read version from LLS csproj
+                string csprojPath = Path.Combine(_settings.LLSRepoPath, "basehead.LicenseServer.csproj");
+
+                if (!File.Exists(csprojPath))
+                {
+                    Log.Warning("Could not find LLS csproj file at: {Path}", csprojPath);
+                    return (false, "", $"Could not find LLS csproj file at: {csprojPath}");
+                }
+
+                var csprojDoc = XDocument.Load(csprojPath);
+                var versionElement = csprojDoc.Descendants("Version").FirstOrDefault();
+
+                if (versionElement == null)
+                {
+                    Log.Warning("No <Version> element found in LLS csproj file");
+                    return (false, "", "No <Version> element found in LLS csproj file");
+                }
+
+                string version = versionElement.Value;
+                Log.Information("Found version in LLS csproj: {Version}", version);
+
+                // Update LLS Advanced Installer .aip file
+                string aipPath = _settings.LLSAdvancedInstallerProjectPath;
+                if (!File.Exists(aipPath))
+                {
+                    Log.Warning("Could not find LLS Advanced Installer project at: {Path}", aipPath);
+                    return (false, version, $"Could not find LLS Advanced Installer project at: {aipPath}");
+                }
+
+                string aipContent = File.ReadAllText(aipPath);
+
+                // Use regex to find and replace ProductVersion value
+                var regex = new Regex(@"(<ROW Property=""ProductVersion"" Value="")([^""]+)("")");
+                var match = regex.Match(aipContent);
+
+                if (!match.Success)
+                {
+                    Log.Warning("Could not find ProductVersion property in LLS .aip file");
+                    return (false, version, "Could not find ProductVersion property in LLS .aip file");
+                }
+
+                string oldVersion = match.Groups[2].Value;
+                if (oldVersion == version)
+                {
+                    Log.Information("LLS Advanced Installer version already matches: {Version}", version);
+                    return (true, version, $"LLS AI version already up to date: {version}");
+                }
+
+                // Replace the version
+                string newContent = regex.Replace(aipContent, $"${{1}}{version}${{3}}");
+                File.WriteAllText(aipPath, newContent);
+
+                Log.Information("Updated LLS Advanced Installer version from {OldVersion} to {NewVersion}", oldVersion, version);
+                return (true, version, $"Updated LLS AI version from {oldVersion} to {version}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error syncing LLS version to Advanced Installer");
+                return (false, "", $"Error syncing LLS version: {ex.Message}");
+            }
         }
     }
 }
