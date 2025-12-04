@@ -1,0 +1,306 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 45;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		61C5838F1118185F00A6AF28 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08EA7FFBFE8413EDC02AAC07 /* Carbon.framework */; };
+		61C583BC11181A3400A6AF28 /* skin.xml in Resources */ = {isa = PBXBuildFile; fileRef = 61C583BB11181A3400A6AF28 /* skin.xml */; };
+		61C583D211181BAF00A6AF28 /* componentmain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 61C583CD11181BAF00A6AF28 /* componentmain.cpp */; };
+		61C583D311181BAF00A6AF28 /* skicomponent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 61C583CE11181BAF00A6AF28 /* skicomponent.cpp */; };
+		61C583D411181BAF00A6AF28 /* skiexampledialog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 61C583D011181BAF00A6AF28 /* skiexampledialog.cpp */; };
+		61C583E811181DB800A6AF28 /* pvaluecontainer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 61C583E711181DB800A6AF28 /* pvaluecontainer.cpp */; };
+		61C583F211181F6000A6AF28 /* libbase.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 61C58396111818A200A6AF28 /* libbase.a */; };
+		61C583F71118204800A6AF28 /* pattributes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 61C583F61118204800A6AF28 /* pattributes.cpp */; };
+		61C583F91118206000A6AF28 /* pluginfactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 61C583F81118206000A6AF28 /* pluginfactory.cpp */; };
+		61C583FC1118211000A6AF28 /* macmain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 61C583FB1118211000A6AF28 /* macmain.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		61C58395111818A200A6AF28 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 61C58391111818A200A6AF28 /* base.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = D2AAC046055464E500DB518D /* libbase.a */;
+			remoteInfo = base;
+		};
+		61C583F311181F7200A6AF28 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 61C58391111818A200A6AF28 /* base.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = D2AAC045055464E500DB518D /* base */;
+			remoteInfo = base;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		08EA7FFBFE8413EDC02AAC07 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = /System/Library/Frameworks/Carbon.framework; sourceTree = "<absolute>"; };
+		61AC69091111E45A00D545CE /* debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = config/debug.xcconfig; sourceTree = "<group>"; };
+		61AC690A1111E45A00D545CE /* release.xcconfig */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.xcconfig; name = release.xcconfig; path = config/release.xcconfig; sourceTree = "<group>"; };
+		61C583521118153A00A6AF28 /* ski.xcconfig */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.xcconfig; name = ski.xcconfig; path = config/ski.xcconfig; sourceTree = "<group>"; };
+		61C583781118179C00A6AF28 /* ski-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ski-Info.plist"; sourceTree = "<group>"; };
+		61C5838C1118185200A6AF28 /* ski.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ski.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		61C58391111818A200A6AF28 /* base.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = base.xcodeproj; path = ../../../../base/mac/base.xcodeproj; sourceTree = SOURCE_ROOT; };
+		61C583BB11181A3400A6AF28 /* skin.xml */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.xml; name = skin.xml; path = ../resource/skin.xml; sourceTree = SOURCE_ROOT; };
+		61C583CD11181BAF00A6AF28 /* componentmain.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = componentmain.cpp; path = ../source/componentmain.cpp; sourceTree = SOURCE_ROOT; };
+		61C583CE11181BAF00A6AF28 /* skicomponent.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = skicomponent.cpp; path = ../source/skicomponent.cpp; sourceTree = SOURCE_ROOT; };
+		61C583CF11181BAF00A6AF28 /* skicomponent.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = skicomponent.h; path = ../source/skicomponent.h; sourceTree = SOURCE_ROOT; };
+		61C583D011181BAF00A6AF28 /* skiexampledialog.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = skiexampledialog.cpp; path = ../source/skiexampledialog.cpp; sourceTree = SOURCE_ROOT; };
+		61C583D111181BAF00A6AF28 /* skiexampledialog.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = skiexampledialog.h; path = ../source/skiexampledialog.h; sourceTree = SOURCE_ROOT; };
+		61C583E711181DB800A6AF28 /* pvaluecontainer.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = pvaluecontainer.cpp; path = ../../../source/common/pvaluecontainer.cpp; sourceTree = SOURCE_ROOT; };
+		61C583F61118204800A6AF28 /* pattributes.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = pattributes.cpp; path = ../../../source/common/pattributes.cpp; sourceTree = SOURCE_ROOT; };
+		61C583F81118206000A6AF28 /* pluginfactory.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = pluginfactory.cpp; path = ../../../source/main/pluginfactory.cpp; sourceTree = SOURCE_ROOT; };
+		61C583FB1118211000A6AF28 /* macmain.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = macmain.cpp; path = ../../../source/main/macmain.cpp; sourceTree = SOURCE_ROOT; };
+		8D01CCD10486CAD60068D4B7 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		61C5838A1118185200A6AF28 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				61C5838F1118185F00A6AF28 /* Carbon.framework in Frameworks */,
+				61C583F211181F6000A6AF28 /* libbase.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		089C166AFE841209C02AAC07 /* abcfilter */ = {
+			isa = PBXGroup;
+			children = (
+				61C583BB11181A3400A6AF28 /* skin.xml */,
+				61C58391111818A200A6AF28 /* base.xcodeproj */,
+				61AC69071111E43F00D545CE /* config */,
+				08FB77ADFE841716C02AAC07 /* Source */,
+				089C167CFE841241C02AAC07 /* Resources */,
+				089C1671FE841209C02AAC07 /* External Frameworks and Libraries */,
+				19C28FB4FE9D528D11CA2CBB /* Products */,
+				61C583781118179C00A6AF28 /* ski-Info.plist */,
+			);
+			name = abcfilter;
+			sourceTree = "<group>";
+		};
+		089C1671FE841209C02AAC07 /* External Frameworks and Libraries */ = {
+			isa = PBXGroup;
+			children = (
+				08EA7FFBFE8413EDC02AAC07 /* Carbon.framework */,
+			);
+			name = "External Frameworks and Libraries";
+			sourceTree = "<group>";
+		};
+		089C167CFE841241C02AAC07 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8D01CCD10486CAD60068D4B7 /* Info.plist */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		08FB77ADFE841716C02AAC07 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				61C583E611181D9700A6AF28 /* public.sdk */,
+				61C583CD11181BAF00A6AF28 /* componentmain.cpp */,
+				61C583CE11181BAF00A6AF28 /* skicomponent.cpp */,
+				61C583CF11181BAF00A6AF28 /* skicomponent.h */,
+				61C583D011181BAF00A6AF28 /* skiexampledialog.cpp */,
+				61C583D111181BAF00A6AF28 /* skiexampledialog.h */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		19C28FB4FE9D528D11CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				61C5838C1118185200A6AF28 /* ski.bundle */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		61AC69071111E43F00D545CE /* config */ = {
+			isa = PBXGroup;
+			children = (
+				61C583521118153A00A6AF28 /* ski.xcconfig */,
+				61AC69091111E45A00D545CE /* debug.xcconfig */,
+				61AC690A1111E45A00D545CE /* release.xcconfig */,
+			);
+			name = config;
+			sourceTree = "<group>";
+		};
+		61C58392111818A200A6AF28 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				61C58396111818A200A6AF28 /* libbase.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		61C583E611181D9700A6AF28 /* public.sdk */ = {
+			isa = PBXGroup;
+			children = (
+				61C583FB1118211000A6AF28 /* macmain.cpp */,
+				61C583F81118206000A6AF28 /* pluginfactory.cpp */,
+				61C583F61118204800A6AF28 /* pattributes.cpp */,
+				61C583E711181DB800A6AF28 /* pvaluecontainer.cpp */,
+			);
+			name = public.sdk;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		61C5838B1118185200A6AF28 /* ski */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 61C583901118187D00A6AF28 /* Build configuration list for PBXNativeTarget "ski" */;
+			buildPhases = (
+				61C583881118185200A6AF28 /* Resources */,
+				61C583891118185200A6AF28 /* Sources */,
+				61C5838A1118185200A6AF28 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				61C583F411181F7200A6AF28 /* PBXTargetDependency */,
+			);
+			name = ski;
+			productName = ski;
+			productReference = 61C5838C1118185200A6AF28 /* ski.bundle */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		089C1669FE841209C02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 61AC69021111E43100D545CE /* Build configuration list for PBXProject "ski" */;
+			compatibilityVersion = "Xcode 2.4";
+			hasScannedForEncodings = 1;
+			mainGroup = 089C166AFE841209C02AAC07 /* abcfilter */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 61C58392111818A200A6AF28 /* Products */;
+					ProjectRef = 61C58391111818A200A6AF28 /* base.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				61C5838B1118185200A6AF28 /* ski */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		61C58396111818A200A6AF28 /* libbase.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libbase.a;
+			remoteRef = 61C58395111818A200A6AF28 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		61C583881118185200A6AF28 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				61C583BC11181A3400A6AF28 /* skin.xml in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		61C583891118185200A6AF28 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				61C583D211181BAF00A6AF28 /* componentmain.cpp in Sources */,
+				61C583D311181BAF00A6AF28 /* skicomponent.cpp in Sources */,
+				61C583D411181BAF00A6AF28 /* skiexampledialog.cpp in Sources */,
+				61C583E811181DB800A6AF28 /* pvaluecontainer.cpp in Sources */,
+				61C583F71118204800A6AF28 /* pattributes.cpp in Sources */,
+				61C583F91118206000A6AF28 /* pluginfactory.cpp in Sources */,
+				61C583FC1118211000A6AF28 /* macmain.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		61C583F411181F7200A6AF28 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = base;
+			targetProxy = 61C583F311181F7200A6AF28 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		61AC68FC1111E43100D545CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 61AC69091111E45A00D545CE /* debug.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		61AC68FD1111E43100D545CE /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 61AC690A1111E45A00D545CE /* release.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		61C5838D1118185200A6AF28 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 61AC69091111E45A00D545CE /* debug.xcconfig */;
+			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = "_DEBUG=1";
+				HEADER_SEARCH_PATHS = (
+					../../../..,
+					"../../../source/**",
+				);
+			};
+			name = Debug;
+		};
+		61C5838E1118185200A6AF28 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 61AC690A1111E45A00D545CE /* release.xcconfig */;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"../../../source/**",
+					../../../..,
+				);
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		61AC69021111E43100D545CE /* Build configuration list for PBXProject "ski" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				61AC68FC1111E43100D545CE /* Debug */,
+				61AC68FD1111E43100D545CE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		61C583901118187D00A6AF28 /* Build configuration list for PBXNativeTarget "ski" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				61C5838D1118185200A6AF28 /* Debug */,
+				61C5838E1118185200A6AF28 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 089C1669FE841209C02AAC07 /* Project object */;
+}

@@ -1,0 +1,5 @@
+#include "../../../../base/mac/config/release"
+#include "ski"
+
+GCC_PREPROCESSOR_DEFINITIONS = RELEASE=1
+

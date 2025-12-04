@@ -1,0 +1,52 @@
+<skin>
+
+<template name="SKITest" size="0,0,0,0" title="SKI Test" style="windowstyle|rememberpos">
+	<row margin="10" >
+		<col margin="0" style="equalsize">
+			<switch name="commandTest" size="0, 0, 200,20" style="button|rollover" just="left" title="Fire 'open file' command" />
+			<switch name="projectZoom" size="0, 0, 200,20" style="button|rollover" just="left" title="Project Zoom Test" />
+			<switch name="projectTest1" size="0, 0, 200,20" style="button|rollover" just="left" title="Project Edit Test 1" />
+			<switch name="projectTest2" size="0, 0, 200,20" style="button|rollover" just="left" title="Project Edit Test 2" />
+			<switch name="projectTest3" size="0, 0, 200,20" style="button|rollover" just="left" title="Project Selection Test" />
+
+			<switch name="cursortest" size="0, 0, 200,20" style="onoff|rollover" just="left" title="Set Wait Cursor" />
+			<switch name="modaltest" size="0, 0, 200,20" style="button|rollover" just="left" title="Program Modal Test" />
+			<switch name="modaltest2" size="0, 0, 200,20" style="button|rollover" just="left" title="Program Modal Test without release" />
+
+			<switch name="deviceTest" size="0, 0, 200,20" style="button|rollover" just="left" title="Test Device List" />
+
+			<switch name="undoTest" size="0, 0, 200,20" style="button|rollover" just="left" title="Test Undo" />
+			<switch name="colorTest" size="0, 0, 200,20" style="button|rollover" just="left" title="Color Test" />
+			<switch name="automation" size="0, 0, 200,20" style="button|rollover" just="left" title="Automation Test" />
+			<slider name="testParam" size="0,0,100,20" style="horizontal"/>
+		</col>
+		<col margin="0" style="equalsize">
+			<row margin="5" >
+				<switch name="stop" size="0, 0, 80,20" style="on" title="Stop" attach="top" />
+				<switch name="play" size="0, 0, 80,20" style="on" title="Play" attach="top" />
+			</row>
+			<switch name="loadAsioDriver" title="Load Asio Driver" size="7, 2, 200,20" style="button|rollover" just="left"  />
+			<switch name="setMidiPortNames" title="Setup Midi Ports" size="7, 22, 200,20" style="button|rollover" just="left"  />
+			<switch name="hideMidiPorts" title="Setup Midi Ports" size="7, 42, 200,20" style="button|rollover" just="left"  />
+			<switch name="setupAudioPorts" title="Setup Audio Ports" size="7, 62, 200,20" style="button|rollover" just="left"  />
+			<switch name="createOutput" title="Create Output Channel" size="7, 82, 200,20" style="button|rollover" just="left"  />
+			<switch name="connectAudioChannels" title="Connect Audio Channels" size="7, 102, 200,20" style="button|rollover" just="left"  />
+			<switch name="connectAudioSends" title="Connect Audio Sends" size="7, 102, 200,20" style="button|rollover" just="left" tip="Connect the first send of each audiochannel to the first output channel" />
+			<switch name="checkAudioPorts" title="Check Audio Ports of Channels" size="7, 122, 200,20" style="button|rollover" just="left"  />
+			<switch name="monitorDependency" title="Make/Remove Monitor Dependency" size="7, 142, 200,20" style="button|rollover" just="left"  />
+			<switch name="cloneable" title="Cloneable Test" size="7, 162, 200,20" style="button|rollover" just="left"  />
+			<switch name="connectMidiChannels" title="Connect Midi Channels" size="7, 182, 200,20" style="button|rollover" just="left"  />
+			<switch name="createGroupTrack" title="Create Group Channel Track" size="7, 182, 200,20" style="button|rollover" just="left"  />
+			<switch name="createHugeBus" title="Create 32-Channel Bus" size="7, 182, 200,20" style="button|rollover" just="left"  />
+		</col>
+	</row>
+</template>
+
+
+
+<template name="SKIViewTest" size="50,50,0,0" title="SKI View Test" style="windowstyle|rememberpos|remembersize">
+	<view name="TestView" size="0,0,500,400" attach="all" />
+</template>
+
+
+</skin>
