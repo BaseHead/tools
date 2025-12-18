@@ -991,6 +991,9 @@ namespace SlackCIApp
                                 {
                                     Log.Warning("LLS output directory not found: {Dir}", installerDir);
                                 }
+
+                                // Build the Linux .deb package via WSL
+                                await BuildLLSLinuxPackage(settings, llsVersionSync.Version);
                             }
                             else
                             {
@@ -1040,6 +1043,146 @@ namespace SlackCIApp
             {
                 Log.Error(ex, "Error during LLS build: {ErrorMessage}", ex.Message);
                 SendSlackMessage(settings, $":x: Error during LLS build: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Builds the Linux .deb package for LLS via WSL
+        /// </summary>
+        static async Task BuildLLSLinuxPackage(SlackCISettings settings, string version)
+        {
+            try
+            {
+                Log.Information("Starting Linux LLS build via WSL...");
+                SendSlackMessage(settings, ":penguin: Building Linux .deb package via WSL...");
+
+                // Convert Windows path to WSL path
+                string llsRepoPath = settings.LLSRepoPath;
+                string wslPath = llsRepoPath.Replace("C:", "/mnt/c").Replace("\\", "/");
+                string wslCommand = $"cd {wslPath} && bash publish-linux-x64.sh";
+
+                using var process = new Process();
+                process.StartInfo = new ProcessStartInfo
+                {
+                    FileName = "wsl",
+                    Arguments = $"bash -c \"{wslCommand}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = false
+                };
+
+                var outputBuilder = new StringBuilder();
+                process.OutputDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        outputBuilder.AppendLine(e.Data);
+                        Log.Information("WSL LLS: {Output}", e.Data);
+                    }
+                };
+                process.ErrorDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        outputBuilder.AppendLine(e.Data);
+                        Log.Warning("WSL LLS Error: {Output}", e.Data);
+                    }
+                };
+
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                bool completed = await Task.Run(() => process.WaitForExit(600000)); // 10 minute timeout
+
+                if (!completed)
+                {
+                    Log.Error("Linux LLS build timed out after 10 minutes");
+                    SendSlackMessage(settings, ":x: Linux LLS build timed out after 10 minutes");
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            process.Kill();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error killing WSL process");
+                    }
+                    return;
+                }
+
+                if (process.ExitCode == 0)
+                {
+                    Log.Information("Linux LLS .deb package built successfully");
+                    SendSlackMessage(settings, ":white_check_mark: Linux LLS .deb package built successfully!");
+
+                    // Look for the .deb file and copy to network
+                    try
+                    {
+                        string debOutputDir = Path.Combine(settings.LLSRepoPath, "publish-linux-x64");
+                        if (Directory.Exists(debOutputDir))
+                        {
+                            string[] debFiles = Directory.GetFiles(debOutputDir, "*.deb");
+                            if (debFiles.Length > 0)
+                            {
+                                string debFile = debFiles.OrderByDescending(f => new FileInfo(f).CreationTime).First();
+                                string fileName = Path.GetFileName(debFile);
+                                var fileSize = new FileInfo(debFile).Length / (1024.0 * 1024.0);
+                                SendSlackMessage(settings, $":package: Linux package built: {fileName} ({fileSize:F2} MB)");
+
+                                // Copy to network path
+                                string networkPath = @"\\BeeStation\home\Files\build-server";
+                                string versionedFileName = GetVersionedFileName(fileName, version);
+                                string networkFilePath = Path.Combine(networkPath, versionedFileName);
+
+                                if (!Directory.Exists(networkPath))
+                                {
+                                    Directory.CreateDirectory(networkPath);
+                                }
+
+                                File.Copy(debFile, networkFilePath, true);
+                                SendSlackMessage(settings, $":file_folder: Linux package copied to network: {versionedFileName}");
+                            }
+                            else
+                            {
+                                Log.Warning("No .deb files found in output directory: {Dir}", debOutputDir);
+                                SendSlackMessage(settings, $":warning: No .deb files found in output directory");
+                            }
+                        }
+                        else
+                        {
+                            Log.Warning("Linux output directory not found: {Dir}", debOutputDir);
+                            SendSlackMessage(settings, $":warning: Linux output directory not found: {debOutputDir}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error copying Linux .deb to network: {Error}", ex.Message);
+                        SendSlackMessage(settings, $":warning: Failed to copy Linux .deb to network: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Log.Error("Linux LLS build failed with exit code {ExitCode}", process.ExitCode);
+                    SendSlackMessage(settings, $":x: Linux LLS build failed with exit code {process.ExitCode}");
+                    var output = outputBuilder.ToString().Trim();
+                    if (output.Length > 500)
+                    {
+                        output = "..." + output.Substring(Math.Max(0, output.Length - 500));
+                    }
+                    if (!string.IsNullOrWhiteSpace(output))
+                    {
+                        SendSlackMessage(settings, $"```\n{output}\n```");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during Linux LLS build: {ErrorMessage}", ex.Message);
+                SendSlackMessage(settings, $":x: Error during Linux LLS build: {ex.Message}");
             }
         }
 
@@ -1288,6 +1431,7 @@ namespace SlackCIApp
 
         /// <summary>
         /// Syncs the version from the csproj file to the Advanced Installer .aip file
+        /// Uses Advanced Installer command line to properly regenerate ProductCode and component GUIDs
         /// </summary>
         private static (bool Success, string Version, string Message) SyncVersionToAdvancedInstaller(SlackCISettings settings)
         {
@@ -1324,30 +1468,93 @@ namespace SlackCIApp
                     return (false, version, $"Could not find Advanced Installer project at: {aipPath}");
                 }
 
+                // Check current version in .aip file
                 string aipContent = File.ReadAllText(aipPath);
+                var versionRegex = new Regex(@"<ROW Property=""ProductVersion"" Value=""([^""]+)""");
+                var versionMatch = versionRegex.Match(aipContent);
+                string oldVersion = versionMatch.Success ? versionMatch.Groups[1].Value : "";
 
-                // Use regex to find and replace ProductVersion value
-                var regex = new Regex(@"(<ROW Property=""ProductVersion"" Value="")([^""]+)("")");
-                var match = regex.Match(aipContent);
-
-                if (!match.Success)
-                {
-                    Log.Warning("Could not find ProductVersion property in .aip file");
-                    return (false, version, "Could not find ProductVersion property in .aip file");
-                }
-
-                string oldVersion = match.Groups[2].Value;
                 if (oldVersion == version)
                 {
                     Log.Information("Version already matches: {Version}", version);
                     return (true, version, $"Version already up to date: {version}");
                 }
 
-                // Replace the version
-                string newContent = regex.Replace(aipContent, $"${{1}}{version}${{3}}");
-                File.WriteAllText(aipPath, newContent);
+                // Ensure AI_UPGRADE is set to "Yes" for major upgrade support (do this before AI command line)
+                if (aipContent.Contains(@"<ROW Property=""AI_UPGRADE"" Value=""No""/>"))
+                {
+                    aipContent = aipContent.Replace(@"<ROW Property=""AI_UPGRADE"" Value=""No""/>", @"<ROW Property=""AI_UPGRADE"" Value=""Yes""/>");
+                    File.WriteAllText(aipPath, aipContent);
+                    Log.Information("Set AI_UPGRADE to Yes");
+                }
 
-                Log.Information("Updated Advanced Installer version from {OldVersion} to {NewVersion}", oldVersion, version);
+                // Use Advanced Installer command line to set version and regenerate ProductCode + component GUIDs
+                // This is the proper way to handle major upgrades
+                string aiExePath = settings.AdvancedInstallerExePath;
+                if (!File.Exists(aiExePath))
+                {
+                    Log.Warning("Advanced Installer not found at: {Path}, falling back to manual edit", aiExePath);
+                    return FallbackManualVersionUpdate(aipPath, version, oldVersion);
+                }
+
+                Log.Information("Using Advanced Installer CLI to update version and regenerate GUIDs...");
+
+                // First set the version (this triggers GUID regeneration in AI)
+                var setVersionProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = aiExePath,
+                        Arguments = $"/edit \"{aipPath}\" /SetVersion {version}",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                setVersionProcess.Start();
+                string versionOutput = setVersionProcess.StandardOutput.ReadToEnd();
+                string versionError = setVersionProcess.StandardError.ReadToEnd();
+                setVersionProcess.WaitForExit();
+
+                if (setVersionProcess.ExitCode != 0)
+                {
+                    Log.Warning("SetVersion command failed: {Error}, falling back to manual edit", versionError);
+                    return FallbackManualVersionUpdate(aipPath, version, oldVersion);
+                }
+
+                Log.Information("SetVersion output: {Output}", versionOutput);
+
+                // Then set new ProductCode (auto-generates if no GUID specified)
+                var setProductCodeProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = aiExePath,
+                        Arguments = $"/edit \"{aipPath}\" /SetProductCode -langid 1033",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                setProductCodeProcess.Start();
+                string productCodeOutput = setProductCodeProcess.StandardOutput.ReadToEnd();
+                string productCodeError = setProductCodeProcess.StandardError.ReadToEnd();
+                setProductCodeProcess.WaitForExit();
+
+                if (setProductCodeProcess.ExitCode != 0)
+                {
+                    Log.Warning("SetProductCode command returned: {Error}", productCodeError);
+                }
+                else
+                {
+                    Log.Information("SetProductCode output: {Output}", productCodeOutput);
+                }
+
+                Log.Information("Updated Advanced Installer version from {OldVersion} to {NewVersion} using CLI", oldVersion, version);
                 return (true, version, $"Updated version from {oldVersion} to {version}");
             }
             catch (Exception ex)
@@ -1358,13 +1565,52 @@ namespace SlackCIApp
         }
 
         /// <summary>
+        /// Fallback method to manually update version and ProductCode when AI CLI is not available
+        /// </summary>
+        private static (bool Success, string Version, string Message) FallbackManualVersionUpdate(string aipPath, string version, string oldVersion)
+        {
+            try
+            {
+                string aipContent = File.ReadAllText(aipPath);
+
+                // Update ProductVersion
+                var regex = new Regex(@"(<ROW Property=""ProductVersion"" Value="")([^""]+)("")");
+                string newContent = regex.Replace(aipContent, $"${{1}}{version}${{3}}");
+
+                // Generate new ProductCode GUID
+                var productCodeRegex = new Regex(@"(<ROW Property=""ProductCode"" Value=""1033:)(\{[A-F0-9\-]+\})("" Type=""16""/>)");
+                var productCodeMatch = productCodeRegex.Match(newContent);
+                if (productCodeMatch.Success)
+                {
+                    string newGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();
+                    newContent = productCodeRegex.Replace(newContent, $"${{1}}{newGuid}${{3}}");
+                    Log.Information("Generated new ProductCode (fallback): {ProductCode}", newGuid);
+                }
+
+                // Ensure AI_UPGRADE is Yes
+                newContent = newContent.Replace(@"<ROW Property=""AI_UPGRADE"" Value=""No""/>", @"<ROW Property=""AI_UPGRADE"" Value=""Yes""/>");
+
+                File.WriteAllText(aipPath, newContent);
+
+                Log.Warning("Used fallback manual version update - component GUIDs were NOT regenerated");
+                Log.Warning("For proper major upgrade support, ensure Advanced Installer CLI is available");
+                return (true, version, $"Updated version from {oldVersion} to {version} (fallback mode - component GUIDs not updated)");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Fallback version update failed");
+                return (false, version, $"Fallback update failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Updates the version in LLS csproj to today's date (YYYY.MM.DD format)
         /// </summary>
         private static (bool Success, string Version, string Message) UpdateLLSCsprojVersionToToday(SlackCISettings settings)
         {
             try
             {
-                string csprojPath = Path.Combine(settings.LLSRepoPath, "basehead.LicenseServer.csproj");
+                string csprojPath = Path.Combine(settings.LLSRepoPath, "basehead.LLS.csproj");
 
                 if (!File.Exists(csprojPath))
                 {
@@ -1414,7 +1660,7 @@ namespace SlackCIApp
             try
             {
                 // Read version from LLS csproj
-                string csprojPath = Path.Combine(settings.LLSRepoPath, "basehead.LicenseServer.csproj");
+                string csprojPath = Path.Combine(settings.LLSRepoPath, "basehead.LLS.csproj");
 
                 if (!File.Exists(csprojPath))
                 {

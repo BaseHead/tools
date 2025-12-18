@@ -18,7 +18,7 @@ namespace SlackCIApp.Config
         // Git repository settings
         public string WindowsRepoPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead";
         public string MacRepoPath { get; set; } = "/Users/steve/Desktop/GitHub/basehead";
-        public string LLSRepoPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LicenseServer";
+        public string LLSRepoPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LLS";
         public string GitBranch { get; set; } = "main";  // Default to main branch
         public bool EnableGitPullForService { get; set; } = true;  // Enable Git pull for basehead builds
         public string ServiceUserSshKeyPath { get; set; } = @"C:\ProgramData\SlackCI\.ssh\id_rsa";  // Service-specific SSH key path
@@ -26,7 +26,7 @@ namespace SlackCIApp.Config
         // Build Script Paths
         public string WindowsBuildScriptPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\build.bat";
         public string MacBuildScriptPath { get; set; } = @"/Users/steve/Desktop/GitHub/basehead/build.sh";
-        public string LLSBuildScriptPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LicenseServer\build.bat";
+        public string LLSBuildScriptPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LLS\build-all.bat";
         
         // Build Commands       
         public string TriggerBothCommand { get; set; } = "build bh";
@@ -48,7 +48,7 @@ namespace SlackCIApp.Config
           // Advanced Installer
         public string AdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\Installer\_buildInstaller2025.aip";
         public string AdvancedInstallerExePath { get; set; } = @"C:\Program Files (x86)\Caphyon\Advanced Installer 22.2\bin\x86\AdvancedInstaller.com";
-        public string LLSAdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LicenseServer\Installer\PC\LLS_Installer.aip";
+        public string LLSAdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LLS\Installer\PC\LLS_Installer.aip";
         public string BuildVersion { get; set; } = "1.0.0";
     }
 }

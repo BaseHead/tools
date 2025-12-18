@@ -1,8 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir /s /b \"C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LicenseServer\\*.csproj\")",
-      "Bash(dir \"C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LicenseServer\"\")"
+      "Bash(dir /s /b \"C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LLS\\*.csproj\")",
+      "Bash(dir \"C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LLS\"\")",
+      "Bash(dir:*)",
+      "Bash(wsl -e sed:*)",
+      "Bash(cmd /c \"wsl sed -i ''s/\\r$//'' /mnt/c/Users/carbo/Desktop/GitHub/basehead/basehead.LLS/publish-linux-x64.sh\")",
+      "Bash(cmd /c \"wsl file /mnt/c/Users/carbo/Desktop/GitHub/basehead/basehead.LLS/publish-linux-x64.sh\")",
+      "Bash(cmd /c \"wsl head -1 /mnt/c/Users/carbo/Desktop/GitHub/basehead/basehead.LLS/publish-linux-x64.sh | od -c | head -1\")",
+      "Bash(cmd /c \"wsl cat /mnt/c/Users/carbo/Desktop/GitHub/basehead/basehead.LLS/publish-linux-x64.sh | wsl od -c | wsl head -2\")",
+      "Bash(powershell -Command \"(Get-Content ''C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LLS\\publish-linux-x64.sh'' -Raw) -match ''\\r\\n''\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File:*)",
+      "Bash(del \"C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LLS\\fix-line-endings.ps1\")",
+      "Bash(dotnet build:*)"
     ],
     "deny": [],
     "ask": []
