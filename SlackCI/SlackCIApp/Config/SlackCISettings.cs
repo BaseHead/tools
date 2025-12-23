@@ -27,6 +27,8 @@ namespace SlackCIApp.Config
         public string WindowsBuildScriptPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\build.bat";
         public string MacBuildScriptPath { get; set; } = @"/Users/steve/Desktop/GitHub/basehead/build.sh";
         public string LLSBuildScriptPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LLS\build-all.bat";
+        public string LLSMacBuildScriptPath { get; set; } = @"/Users/steve/Desktop/GitHub/basehead/basehead.LLS/build-lls-macos.sh";
+        public string LLSMacRepoPath { get; set; } = "/Users/steve/Desktop/GitHub/basehead/basehead.LLS";
         
         // Build Commands       
         public string TriggerBothCommand { get; set; } = "build bh";
@@ -45,6 +47,8 @@ namespace SlackCIApp.Config
         public string MacInstallerPath { get; set; } = string.Empty;
         public string MacInstallerLocalPath { get; set; } = string.Empty;
         public string LLSInstallerPath { get; set; } = string.Empty;
+        public string LLSMacInstallerPath { get; set; } = string.Empty;  // Path to LLS Mac installer on Mac
+        public string LLSMacInstallerLocalPath { get; set; } = string.Empty;  // Local path for downloaded LLS Mac installer
           // Advanced Installer
         public string AdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\Installer\_buildInstaller2025.aip";
         public string AdvancedInstallerExePath { get; set; } = @"C:\Program Files (x86)\Caphyon\Advanced Installer 22.2\bin\x86\AdvancedInstaller.com";

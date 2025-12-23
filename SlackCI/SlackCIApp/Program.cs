@@ -183,7 +183,10 @@ namespace SlackCIApp
                         Console.WriteLine($"1) {settings.TriggerBothCommand}");
                         Console.WriteLine($"2) {settings.TriggerWindowsCommand}");
                         Console.WriteLine($"3) {settings.TriggerMacCommand}");
-                        Console.WriteLine($"4) {settings.TriggerLLSCommand}");
+                        Console.WriteLine($"4) {settings.TriggerLLSCommand} (all platforms)");
+                        Console.WriteLine("5) build lls-pc (Windows only)");
+                        Console.WriteLine("6) build lls-linux (Linux only)");
+                        Console.WriteLine("7) build lls-mac (Mac only)");
                         Console.WriteLine("Type \"exit\" to quit");
                         
                         while (!cts.Token.IsCancellationRequested)
@@ -254,8 +257,29 @@ namespace SlackCIApp
             {
                 Log.Information("Starting LLS build...");
                 SendSlackMessage(settings, ":rocket: Starting LLS build...");
-                
+
                 await TriggerLLSBuild(settings);
+            }
+            else if (inputLower == "5" || inputLower == "build lls-pc")
+            {
+                Log.Information("Starting LLS Windows build only...");
+                SendSlackMessage(settings, ":rocket: Starting LLS Windows build only...");
+
+                await TriggerLLSWindowsBuild(settings);
+            }
+            else if (inputLower == "6" || inputLower == "build lls-linux")
+            {
+                Log.Information("Starting LLS Linux build only...");
+                SendSlackMessage(settings, ":rocket: Starting LLS Linux build only...");
+
+                await TriggerLLSLinuxBuild(settings);
+            }
+            else if (inputLower == "7" || inputLower == "build lls-mac")
+            {
+                Log.Information("Starting LLS Mac build only...");
+                SendSlackMessage(settings, ":rocket: Starting LLS Mac build only...");
+
+                await TriggerLLSMacBuild(settings);
             }
             else if (!string.IsNullOrWhiteSpace(input))
             {
@@ -993,7 +1017,10 @@ namespace SlackCIApp
                                 }
 
                                 // Build the Linux .deb package via WSL
-                                await BuildLLSLinuxPackage(settings, llsVersionSync.Version);
+                                await BuildLLSLinuxPackage(settings);
+
+                                // Build macOS via SSH (includes signing and notarization)
+                                await BuildLLSMacPackage(settings, llsVersionSync.Version);
                             }
                             else
                             {
@@ -1049,7 +1076,7 @@ namespace SlackCIApp
         /// <summary>
         /// Builds the Linux .deb package for LLS via WSL
         /// </summary>
-        static async Task BuildLLSLinuxPackage(SlackCISettings settings, string version)
+        static async Task BuildLLSLinuxPackage(SlackCISettings settings)
         {
             try
             {
@@ -1119,10 +1146,10 @@ namespace SlackCIApp
                     Log.Information("Linux LLS .deb package built successfully");
                     SendSlackMessage(settings, ":white_check_mark: Linux LLS .deb package built successfully!");
 
-                    // Look for the .deb file and copy to network
+                    // Look for the .deb file in Installer/Linux/ folder and copy to network
                     try
                     {
-                        string debOutputDir = Path.Combine(settings.LLSRepoPath, "publish-linux-x64");
+                        string debOutputDir = Path.Combine(settings.LLSRepoPath, "Installer", "Linux");
                         if (Directory.Exists(debOutputDir))
                         {
                             string[] debFiles = Directory.GetFiles(debOutputDir, "*.deb");
@@ -1135,8 +1162,7 @@ namespace SlackCIApp
 
                                 // Copy to network path
                                 string networkPath = @"\\BeeStation\home\Files\build-server";
-                                string versionedFileName = GetVersionedFileName(fileName, version);
-                                string networkFilePath = Path.Combine(networkPath, versionedFileName);
+                                string networkFilePath = Path.Combine(networkPath, fileName);
 
                                 if (!Directory.Exists(networkPath))
                                 {
@@ -1144,7 +1170,7 @@ namespace SlackCIApp
                                 }
 
                                 File.Copy(debFile, networkFilePath, true);
-                                SendSlackMessage(settings, $":file_folder: Linux package copied to network: {versionedFileName}");
+                                SendSlackMessage(settings, $":file_folder: Linux package copied to network: {fileName}");
                             }
                             else
                             {
@@ -1183,6 +1209,338 @@ namespace SlackCIApp
             {
                 Log.Error(ex, "Error during Linux LLS build: {ErrorMessage}", ex.Message);
                 SendSlackMessage(settings, $":x: Error during Linux LLS build: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Builds the macOS packages for LLS via SSH (includes signing and notarization)
+        /// </summary>
+        static async Task BuildLLSMacPackage(SlackCISettings settings, string version)
+        {
+            try
+            {
+                Log.Information("Starting macOS LLS build via SSH...");
+                SendSlackMessage(settings, ":apple: Building macOS LLS package via SSH (includes signing & notarization)...");
+
+                var sshService = new SshService(settings, Log.Logger);
+
+                // First, pull latest changes on Mac
+                SendSlackMessage(settings, ":arrow_down: Pulling latest changes on Mac...");
+                var (pullSuccess, pullOutput) = await sshService.ExecuteCommandWithOutputAsync($"cd {settings.LLSMacRepoPath} && git pull");
+                if (pullSuccess)
+                {
+                    Log.Information("Git pull on Mac succeeded: {Output}", pullOutput);
+                    SendSlackMessage(settings, $":white_check_mark: Git pull: {pullOutput}");
+                }
+                else
+                {
+                    Log.Warning("Git pull on Mac failed: {Error}", pullOutput);
+                    SendSlackMessage(settings, $":warning: Git pull on Mac failed: {pullOutput}");
+                    // Continue anyway - might just be up to date
+                }
+
+                // Execute the Mac build script
+                var (success, output) = await sshService.ExecuteLLSMacBuildAsync();
+
+                if (success)
+                {
+                    Log.Information("macOS LLS build completed successfully");
+                    SendSlackMessage(settings, ":white_check_mark: macOS LLS build completed successfully!");
+
+                    // Download the Mac installers
+                    try
+                    {
+                        string networkPath = @"\\BeeStation\home\Files\build-server";
+
+                        // Download ARM64 installer
+                        string arm64RemotePath = $"{settings.LLSMacRepoPath}/Installer/macOS/Install basehead.LLS v{version} (ARM64).pkg";
+                        string arm64LocalFileName = $"Install basehead.LLS v{version} (ARM64).pkg";
+                        string arm64LocalPath = Path.Combine(Path.GetTempPath(), arm64LocalFileName);
+
+                        if (await sshService.DownloadInstallerAsync(arm64RemotePath, arm64LocalPath))
+                        {
+                            Log.Information("Downloaded ARM64 installer: {Path}", arm64LocalPath);
+
+                            // Copy to network
+                            if (Directory.Exists(networkPath))
+                            {
+                                string networkFilePath = Path.Combine(networkPath, arm64LocalFileName);
+                                File.Copy(arm64LocalPath, networkFilePath, true);
+                                var fileSize = new FileInfo(arm64LocalPath).Length / (1024.0 * 1024.0);
+                                SendSlackMessage(settings, $":file_folder: macOS ARM64 installer ({fileSize:F2} MB) copied to network");
+                            }
+
+                            // Clean up temp file
+                            File.Delete(arm64LocalPath);
+                        }
+                        else
+                        {
+                            Log.Warning("Failed to download ARM64 installer from Mac");
+                            SendSlackMessage(settings, ":warning: Failed to download ARM64 installer from Mac");
+                        }
+
+                        // Download Intel installer
+                        string x64RemotePath = $"{settings.LLSMacRepoPath}/Installer/macOS/Install basehead.LLS v{version} (Intel).pkg";
+                        string x64LocalFileName = $"Install basehead.LLS v{version} (Intel).pkg";
+                        string x64LocalPath = Path.Combine(Path.GetTempPath(), x64LocalFileName);
+
+                        if (await sshService.DownloadInstallerAsync(x64RemotePath, x64LocalPath))
+                        {
+                            Log.Information("Downloaded Intel installer: {Path}", x64LocalPath);
+
+                            // Copy to network
+                            if (Directory.Exists(networkPath))
+                            {
+                                string networkFilePath = Path.Combine(networkPath, x64LocalFileName);
+                                File.Copy(x64LocalPath, networkFilePath, true);
+                                var fileSize = new FileInfo(x64LocalPath).Length / (1024.0 * 1024.0);
+                                SendSlackMessage(settings, $":file_folder: macOS Intel installer ({fileSize:F2} MB) copied to network");
+                            }
+
+                            // Clean up temp file
+                            File.Delete(x64LocalPath);
+                        }
+                        else
+                        {
+                            Log.Warning("Failed to download Intel installer from Mac");
+                            SendSlackMessage(settings, ":warning: Failed to download Intel installer from Mac");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error downloading/copying Mac installers: {Error}", ex.Message);
+                        SendSlackMessage(settings, $":warning: Error handling Mac installers: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Log.Error("macOS LLS build failed: {Output}", output);
+                    SendSlackMessage(settings, $":x: macOS LLS build failed");
+                    if (output.Length > 500)
+                    {
+                        output = "..." + output.Substring(Math.Max(0, output.Length - 500));
+                    }
+                    if (!string.IsNullOrWhiteSpace(output))
+                    {
+                        SendSlackMessage(settings, $"```\n{output}\n```");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during macOS LLS build: {ErrorMessage}", ex.Message);
+                SendSlackMessage(settings, $":x: Error during macOS LLS build: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Triggers LLS Windows build only (no Linux or Mac)
+        /// </summary>
+        static async Task TriggerLLSWindowsBuild(SlackCISettings settings)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(settings.LLSBuildScriptPath) || !File.Exists(settings.LLSBuildScriptPath))
+                {
+                    Log.Warning("LLS build script not found at: {Path}", settings.LLSBuildScriptPath);
+                    SendSlackMessage(settings, $":x: LLS build script not found at: {settings.LLSBuildScriptPath}");
+                    return;
+                }
+
+                // Pull latest changes
+                if (!string.IsNullOrEmpty(settings.WindowsRepoPath))
+                {
+                    SendSlackMessage(settings, ":arrow_down: Pulling latest changes from Git for LLS...");
+                    var sshService = new SshService(settings, Log.Logger);
+                    var gitService = new GitService(settings, Log.Logger, sshService);
+                    var pullResult = await gitService.PullLatestChangesWindowsAsync();
+
+                    if (pullResult.Success)
+                    {
+                        SendSlackMessage(settings, $":white_check_mark: Git pull successful: {pullResult.Message}");
+                    }
+                    else
+                    {
+                        SendSlackMessage(settings, $":x: Build aborted: Git pull failed: {pullResult.Message}");
+                        return;
+                    }
+                }
+
+                // Update version
+                var llsCsprojUpdate = UpdateLLSCsprojVersionToToday(settings);
+                if (llsCsprojUpdate.Success)
+                {
+                    SendSlackMessage(settings, $":calendar: {llsCsprojUpdate.Message}");
+                }
+
+                // Run the build script
+                using var process = new Process();
+                process.StartInfo = new ProcessStartInfo
+                {
+                    FileName = settings.LLSBuildScriptPath,
+                    UseShellExecute = true,
+                    CreateNoWindow = false,
+                    WorkingDirectory = Path.GetDirectoryName(settings.LLSBuildScriptPath)
+                };
+
+                SendSlackMessage(settings, $":arrow_forward: LLS Windows build v{llsCsprojUpdate.Version} starting...");
+                process.Start();
+                await Task.Run(() => process.WaitForExit());
+
+                if (process.ExitCode == 0)
+                {
+                    SendSlackMessage(settings, ":white_check_mark: LLS Windows build completed successfully!");
+
+                    // Sync version and build installer
+                    var llsVersionSync = SyncLLSVersionToAdvancedInstaller(settings);
+                    if (llsVersionSync.Success)
+                    {
+                        SendSlackMessage(settings, $":label: {llsVersionSync.Message}");
+                    }
+
+                    // Run Advanced Installer
+                    var advancedInstallerPath = settings.LLSAdvancedInstallerProjectPath;
+                    if (File.Exists(advancedInstallerPath))
+                    {
+                        SendSlackMessage(settings, $":gear: Creating LLS installer v{llsVersionSync.Version} with Advanced Installer...");
+
+                        var appDir = Directory.GetCurrentDirectory();
+                        var batchFile = Path.Combine(appDir, "RunAdvancedInstaller_LLS.cmd");
+                        string batchContent = $"@echo off\n\"{settings.AdvancedInstallerExePath}\" /build \"{advancedInstallerPath}\"\nexit /b %errorlevel%";
+                        await File.WriteAllTextAsync(batchFile, batchContent);
+
+                        using var aiProcess = new Process();
+                        aiProcess.StartInfo = new ProcessStartInfo
+                        {
+                            FileName = batchFile,
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = false,
+                            WorkingDirectory = Path.GetDirectoryName(advancedInstallerPath)
+                        };
+
+                        aiProcess.Start();
+                        bool completed = await Task.Run(() => aiProcess.WaitForExit(600000));
+
+                        if (completed && aiProcess.ExitCode == 0)
+                        {
+                            SendSlackMessage(settings, ":white_check_mark: LLS Windows installer built successfully!");
+
+                            // Find and copy installer to network
+                            string installerDir = Path.GetDirectoryName(advancedInstallerPath) ?? Directory.GetCurrentDirectory();
+                            string outputDir = Path.Combine(installerDir, "Output");
+                            if (Directory.Exists(outputDir))
+                            {
+                                string[] installerFiles = Directory.GetFiles(outputDir, "*.msi")
+                                    .Concat(Directory.GetFiles(outputDir, "*.exe"))
+                                    .ToArray();
+
+                                if (installerFiles.Length > 0)
+                                {
+                                    string installerFile = installerFiles.OrderByDescending(f => new FileInfo(f).CreationTime).First();
+                                    var fileName = Path.GetFileName(installerFile);
+                                    var fileSize = new FileInfo(installerFile).Length / (1024.0 * 1024.0);
+                                    SendSlackMessage(settings, $":package: LLS Windows installer: {fileName} ({fileSize:F2} MB)");
+
+                                    // Copy to network
+                                    try
+                                    {
+                                        string networkPath = @"\\BeeStation\home\Files\build-server";
+                                        string versionedFileName = GetVersionedFileName(fileName, llsVersionSync.Version);
+                                        string networkFilePath = Path.Combine(networkPath, versionedFileName);
+                                        File.Copy(installerFile, networkFilePath, true);
+                                        SendSlackMessage(settings, $":file_folder: LLS Windows installer copied to network: {versionedFileName}");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        SendSlackMessage(settings, $":warning: Failed to copy to network: {ex.Message}");
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            SendSlackMessage(settings, $":x: LLS installer build failed");
+                        }
+                    }
+                }
+                else
+                {
+                    SendSlackMessage(settings, $":x: LLS Windows build failed with exit code {process.ExitCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during LLS Windows build: {ErrorMessage}", ex.Message);
+                SendSlackMessage(settings, $":x: Error during LLS Windows build: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Triggers LLS Linux build only via WSL
+        /// </summary>
+        static async Task TriggerLLSLinuxBuild(SlackCISettings settings)
+        {
+            try
+            {
+                // Pull latest changes first
+                if (!string.IsNullOrEmpty(settings.WindowsRepoPath))
+                {
+                    SendSlackMessage(settings, ":arrow_down: Pulling latest changes from Git for LLS...");
+                    var sshService = new SshService(settings, Log.Logger);
+                    var gitService = new GitService(settings, Log.Logger, sshService);
+                    var pullResult = await gitService.PullLatestChangesWindowsAsync();
+
+                    if (pullResult.Success)
+                    {
+                        SendSlackMessage(settings, $":white_check_mark: Git pull successful: {pullResult.Message}");
+                    }
+                    else
+                    {
+                        SendSlackMessage(settings, $":x: Build aborted: Git pull failed: {pullResult.Message}");
+                        return;
+                    }
+                }
+
+                // Get version
+                var llsCsprojUpdate = UpdateLLSCsprojVersionToToday(settings);
+                if (llsCsprojUpdate.Success)
+                {
+                    SendSlackMessage(settings, $":calendar: {llsCsprojUpdate.Message}");
+                }
+
+                // Build Linux package
+                await BuildLLSLinuxPackage(settings);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during LLS Linux build: {ErrorMessage}", ex.Message);
+                SendSlackMessage(settings, $":x: Error during LLS Linux build: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Triggers LLS Mac build only via SSH (includes signing and notarization)
+        /// </summary>
+        static async Task TriggerLLSMacBuild(SlackCISettings settings)
+        {
+            try
+            {
+                // Get version first (read from local csproj)
+                var llsCsprojUpdate = UpdateLLSCsprojVersionToToday(settings);
+                if (llsCsprojUpdate.Success)
+                {
+                    SendSlackMessage(settings, $":calendar: {llsCsprojUpdate.Message}");
+                }
+
+                // Build Mac package via SSH
+                await BuildLLSMacPackage(settings, llsCsprojUpdate.Version);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during LLS Mac build: {ErrorMessage}", ex.Message);
+                SendSlackMessage(settings, $":x: Error during LLS Mac build: {ex.Message}");
             }
         }
 

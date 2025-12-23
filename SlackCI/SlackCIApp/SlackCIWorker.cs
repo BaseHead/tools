@@ -549,6 +549,9 @@ namespace SlackCIApp
 
                     // Build the Linux .deb package via WSL
                     await BuildLLSLinuxPackage(llsVersionSync.Version);
+
+                    // Build macOS via SSH (includes signing and notarization)
+                    await BuildLLSMacPackage(llsVersionSync.Version);
                 }
                 else
                 {
@@ -560,6 +563,122 @@ namespace SlackCIApp
             {
                 Log.Error(ex, "Error during LLS build: {ErrorMessage}", ex.Message);
                 SendSlackMessage($":x: Error during LLS build: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Builds the macOS packages for LLS via SSH (includes signing and notarization)
+        /// </summary>
+        private async Task BuildLLSMacPackage(string version)
+        {
+            try
+            {
+                Log.Information("Starting macOS LLS build via SSH...");
+                SendSlackMessage(":apple: Building macOS LLS package via SSH (includes signing & notarization)...");
+
+                var sshService = new SshService(_settings, Log.Logger);
+
+                // First, pull latest changes on Mac
+                SendSlackMessage(":arrow_down: Pulling latest changes on Mac...");
+                var (pullSuccess, pullError) = await sshService.ExecuteCommandAsync($"cd {_settings.LLSMacRepoPath} && git pull");
+                if (!pullSuccess)
+                {
+                    Log.Warning("Git pull on Mac failed: {Error}", pullError);
+                    SendSlackMessage($":warning: Git pull on Mac failed: {pullError}");
+                    // Continue anyway - might just be up to date
+                }
+
+                // Execute the Mac build script
+                var (success, output) = await sshService.ExecuteLLSMacBuildAsync();
+
+                if (success)
+                {
+                    Log.Information("macOS LLS build completed successfully");
+                    SendSlackMessage(":white_check_mark: macOS LLS build completed successfully!");
+
+                    // Download the Mac installers
+                    try
+                    {
+                        string networkPath = @"\\BeeStation\home\Files\build-server";
+
+                        // Download ARM64 installer
+                        string arm64RemotePath = $"{_settings.LLSMacRepoPath}/Installer/macOS/Install basehead.LLS v{version} (ARM64).pkg";
+                        string arm64LocalFileName = $"Install basehead.LLS v{version} (ARM64).pkg";
+                        string arm64LocalPath = Path.Combine(Path.GetTempPath(), arm64LocalFileName);
+
+                        if (await sshService.DownloadInstallerAsync(arm64RemotePath, arm64LocalPath))
+                        {
+                            Log.Information("Downloaded ARM64 installer: {Path}", arm64LocalPath);
+
+                            // Copy to network
+                            if (Directory.Exists(networkPath))
+                            {
+                                string networkFilePath = Path.Combine(networkPath, arm64LocalFileName);
+                                File.Copy(arm64LocalPath, networkFilePath, true);
+                                var fileSize = new FileInfo(arm64LocalPath).Length / (1024.0 * 1024.0);
+                                SendSlackMessage($":file_folder: macOS ARM64 installer ({fileSize:F2} MB) copied to network");
+                            }
+
+                            // Clean up temp file
+                            File.Delete(arm64LocalPath);
+                        }
+                        else
+                        {
+                            Log.Warning("Failed to download ARM64 installer from Mac");
+                            SendSlackMessage(":warning: Failed to download ARM64 installer from Mac");
+                        }
+
+                        // Download Intel installer
+                        string x64RemotePath = $"{_settings.LLSMacRepoPath}/Installer/macOS/Install basehead.LLS v{version} (Intel).pkg";
+                        string x64LocalFileName = $"Install basehead.LLS v{version} (Intel).pkg";
+                        string x64LocalPath = Path.Combine(Path.GetTempPath(), x64LocalFileName);
+
+                        if (await sshService.DownloadInstallerAsync(x64RemotePath, x64LocalPath))
+                        {
+                            Log.Information("Downloaded Intel installer: {Path}", x64LocalPath);
+
+                            // Copy to network
+                            if (Directory.Exists(networkPath))
+                            {
+                                string networkFilePath = Path.Combine(networkPath, x64LocalFileName);
+                                File.Copy(x64LocalPath, networkFilePath, true);
+                                var fileSize = new FileInfo(x64LocalPath).Length / (1024.0 * 1024.0);
+                                SendSlackMessage($":file_folder: macOS Intel installer ({fileSize:F2} MB) copied to network");
+                            }
+
+                            // Clean up temp file
+                            File.Delete(x64LocalPath);
+                        }
+                        else
+                        {
+                            Log.Warning("Failed to download Intel installer from Mac");
+                            SendSlackMessage(":warning: Failed to download Intel installer from Mac");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error downloading/copying Mac installers: {Error}", ex.Message);
+                        SendSlackMessage($":warning: Error handling Mac installers: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Log.Error("macOS LLS build failed: {Output}", output);
+                    SendSlackMessage($":x: macOS LLS build failed");
+                    if (output.Length > 500)
+                    {
+                        output = "..." + output.Substring(Math.Max(0, output.Length - 500));
+                    }
+                    if (!string.IsNullOrWhiteSpace(output))
+                    {
+                        SendSlackMessage($"```\n{output}\n```");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during macOS LLS build: {ErrorMessage}", ex.Message);
+                SendSlackMessage($":x: Error during macOS LLS build: {ex.Message}");
             }
         }
 

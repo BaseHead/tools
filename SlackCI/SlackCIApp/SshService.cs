@@ -213,7 +213,197 @@ namespace SlackCIApp
                 return (false, $"Error: {ex.Message}");
             }
         }
-        
+
+        /// <summary>
+        /// Executes the LLS Mac build via SSH (builds, signs, and notarizes)
+        /// </summary>
+        public async Task<(bool Success, string Output)> ExecuteLLSMacBuildAsync()
+        {
+            _logger.Information("Preparing to execute LLS Mac build via SSH");
+
+            // Check if SSH settings are configured
+            if (string.IsNullOrEmpty(_settings.MacHostname) ||
+                string.IsNullOrEmpty(_settings.MacUsername) ||
+                string.IsNullOrEmpty(_settings.MacKeyPath))
+            {
+                _logger.Warning("SSH settings not fully configured. Please update settings.");
+                return (false, "SSH settings not configured. Please update the configuration.");
+            }
+
+            if (!File.Exists(_settings.MacKeyPath))
+            {
+                _logger.Warning("SSH key file not found: {KeyPath}", _settings.MacKeyPath);
+                return (false, $"SSH key file not found: {_settings.MacKeyPath}");
+            }
+
+            try
+            {
+                _logger.Information("Connecting to Mac via SSH: {Host}", _settings.MacHostname);
+                using var client = new SshClient(_settings.MacHostname, _settings.MacUsername, new PrivateKeyFile(_settings.MacKeyPath));
+
+                // Set connection timeout
+                client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(30);
+                await Task.Run(() => client.Connect());
+
+                if (!client.IsConnected)
+                {
+                    _logger.Error("Failed to connect to Mac via SSH");
+                    return (false, "Failed to connect to Mac via SSH");
+                }
+
+                _logger.Information("Successfully connected to Mac. Preparing to execute LLS build: {Script}", _settings.LLSMacBuildScriptPath);
+
+                // Create a unique identifier for this build run
+                string buildId = Guid.NewGuid().ToString("N");
+
+                // Create unique files to track progress and capture output
+                var markerFile = $"/tmp/lls_build_complete_{buildId}";
+                var exitCodeFile = $"/tmp/lls_build_exit_{buildId}";
+                var outputFile = $"/tmp/lls_build_output_{buildId}";
+
+                // Extract the directory and script name
+                string scriptDir = _settings.LLSMacBuildScriptPath.Replace("\\", "/");
+                string scriptName = Path.GetFileName(scriptDir);
+                scriptDir = Path.GetDirectoryName(scriptDir)?.Replace("\\", "/") ?? "/";
+
+                if (string.IsNullOrEmpty(scriptDir))
+                {
+                    return (false, "Invalid script path. Could not extract directory.");
+                }
+
+                // First check if the script exists and make it executable
+                var checkScript = client.RunCommand($"test -f {scriptDir}/{scriptName} && echo 'exists' || echo 'not found'");
+                if (checkScript.Result.Trim() != "exists")
+                {
+                    _logger.Error("LLS build script not found at {ScriptPath}", $"{scriptDir}/{scriptName}");
+                    return (false, $"LLS build script not found at {scriptDir}/{scriptName}");
+                }
+
+                client.RunCommand($"chmod +x {scriptDir}/{scriptName}");
+
+                // Create an AppleScript that will:
+                // 1. Open a new Terminal window
+                // 2. Run our build script
+                // 3. Capture exit code and mark completion
+                var appleScript = $@"
+                tell application ""Terminal""
+                    activate
+                    set newTab to do script ""cd '{scriptDir}' && ./{scriptName} > {outputFile} 2>&1; echo $? > {exitCodeFile}; touch {markerFile}""
+                    set custom title of tab 1 of window 1 to ""LLS Mac Build""
+                end tell";
+
+                _logger.Information("Executing AppleScript to open Terminal.app for LLS build");
+                var scriptCmd = client.RunCommand($"osascript -e '{appleScript}'");
+
+                if (!string.IsNullOrEmpty(scriptCmd.Error))
+                {
+                    _logger.Error("AppleScript execution failed: {Error}", scriptCmd.Error);
+                    return (false, $"Failed to open Terminal on Mac: {scriptCmd.Error}");
+                }
+
+                // Wait for build to complete by checking for marker file
+                // LLS Mac build with signing/notarization can take longer (30+ minutes)
+                _logger.Information("LLS build running in Terminal.app on Mac. Waiting for completion...");
+                var output = new StringBuilder();
+                bool buildComplete = false;
+                int timeoutCounter = 0;
+                int maxTimeout = 2400; // 40 minutes timeout for signing/notarization
+
+                while (!buildComplete && timeoutCounter < maxTimeout)
+                {
+                    var checkCmd = client.RunCommand($"test -f {markerFile} && echo 'complete' || echo 'running'");
+                    if (checkCmd.Result.Trim() == "complete")
+                    {
+                        buildComplete = true;
+                    }
+                    else
+                    {
+                        // Check for new output to display
+                        var outputExists = client.RunCommand($"test -f {outputFile} && echo 'exists' || echo 'no'");
+                        if (outputExists.Result.Trim() == "exists")
+                        {
+                            var tailCmd = client.RunCommand($"cat {outputFile} && : > {outputFile}");
+                            if (!string.IsNullOrEmpty(tailCmd.Result))
+                            {
+                                output.Append(tailCmd.Result);
+
+                                // Log new output
+                                foreach (var line in tailCmd.Result.Split('\n'))
+                                {
+                                    if (!string.IsNullOrWhiteSpace(line))
+                                    {
+                                        _logger.Information("LLS Mac build: {Output}", line.TrimEnd());
+                                    }
+                                }
+                            }
+                        }
+
+                        await Task.Delay(1000);
+                        timeoutCounter++;
+                    }
+                }
+
+                if (!buildComplete)
+                {
+                    _logger.Error("LLS Mac build timed out after {Seconds} seconds", maxTimeout);
+                    // Try to close Terminal window anyway
+                    client.RunCommand(@"osascript -e 'tell application ""Terminal"" to close (every window whose name contains ""LLS Mac Build"")'");
+                    return (false, "LLS Mac build timed out");
+                }
+
+                // Get exit code
+                var exitCodeExists = client.RunCommand($"test -f {exitCodeFile} && echo 'exists' || echo 'no'");
+                int exitCode = 1; // Default to error
+
+                if (exitCodeExists.Result.Trim() == "exists")
+                {
+                    var exitCodeCmd = client.RunCommand($"cat {exitCodeFile}");
+                    if (!int.TryParse(exitCodeCmd.Result.Trim(), out exitCode))
+                    {
+                        _logger.Warning("Could not parse exit code: {Result}", exitCodeCmd.Result);
+                    }
+                }
+
+                // Get any remaining output
+                var finalOutputExists = client.RunCommand($"test -f {outputFile} && echo 'exists' || echo 'no'");
+                if (finalOutputExists.Result.Trim() == "exists")
+                {
+                    var finalOutputCmd = client.RunCommand($"cat {outputFile}");
+                    if (!string.IsNullOrEmpty(finalOutputCmd.Result))
+                    {
+                        output.Append(finalOutputCmd.Result);
+
+                        // Log the output
+                        foreach (var line in finalOutputCmd.Result.Split('\n'))
+                        {
+                            if (!string.IsNullOrWhiteSpace(line))
+                            {
+                                _logger.Information("LLS Mac build: {Output}", line.TrimEnd());
+                            }
+                        }
+                    }
+                }
+
+                // Clean up temporary files
+                client.RunCommand($"rm -f {markerFile} {exitCodeFile} {outputFile}");
+
+                var success = exitCode == 0;
+                _logger.Information("LLS Mac build finished with exit code: {ExitCode}", exitCode);
+
+                // Close the Terminal window
+                client.RunCommand(@"osascript -e 'tell application ""Terminal"" to close (every window whose name contains ""LLS Mac Build"")'");
+
+                return (success, success
+                    ? "LLS Mac build completed successfully"
+                    : $"LLS Mac build failed with exit code: {exitCode}\n{output}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error executing LLS Mac build: {ErrorMessage}", ex.Message);
+                return (false, $"Error: {ex.Message}");
+            }
+        }
+
         public async Task<bool> DownloadInstallerAsync(string remotePath, string localPath)
         {
             _logger.Information("Downloading Mac installer via SCP");
@@ -415,6 +605,32 @@ Host github.com
 
                 var result = await Task.Run(() => client.RunCommand(command));
                 return (result.ExitStatus == 0, result.Error);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error executing SSH command: {Error}", ex.Message);
+                return (false, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Executes a command on the remote Mac and returns both stdout and success status
+        /// </summary>
+        public async Task<(bool Success, string Output)> ExecuteCommandWithOutputAsync(string command)
+        {
+            try
+            {
+                using var client = new SshClient(_settings.MacHostname, _settings.MacUsername, new PrivateKeyFile(_settings.MacKeyPath));
+                await Task.Run(() => client.Connect());
+
+                if (!client.IsConnected)
+                {
+                    return (false, "Failed to connect to Mac via SSH");
+                }
+
+                var result = await Task.Run(() => client.RunCommand(command));
+                var output = !string.IsNullOrEmpty(result.Result) ? result.Result.Trim() : result.Error;
+                return (result.ExitStatus == 0, output);
             }
             catch (Exception ex)
             {

@@ -12,7 +12,10 @@
       "Bash(powershell -Command \"(Get-Content ''C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LLS\\publish-linux-x64.sh'' -Raw) -match ''\\r\\n''\")",
       "Bash(powershell -ExecutionPolicy Bypass -File:*)",
       "Bash(del \"C:\\Users\\carbo\\Desktop\\GitHub\\basehead\\basehead.LLS\\fix-line-endings.ps1\")",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(cat:*)",
+      "Bash(powershell:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
