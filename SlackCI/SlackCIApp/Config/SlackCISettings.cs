@@ -50,7 +50,7 @@ namespace SlackCIApp.Config
         public string LLSMacInstallerPath { get; set; } = string.Empty;  // Path to LLS Mac installer on Mac
         public string LLSMacInstallerLocalPath { get; set; } = string.Empty;  // Local path for downloaded LLS Mac installer
           // Advanced Installer
-        public string AdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\Installer\_buildInstaller2025.aip";
+        public string AdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\Installer\_buildInstaller2026.aip";
         public string AdvancedInstallerExePath { get; set; } = @"C:\Program Files (x86)\Caphyon\Advanced Installer 22.2\bin\x86\AdvancedInstaller.com";
         public string LLSAdvancedInstallerProjectPath { get; set; } = @"C:\Users\carbo\Desktop\GitHub\basehead\basehead.LLS\Installer\PC\LLS_Installer.aip";
         public string BuildVersion { get; set; } = "1.0.0";

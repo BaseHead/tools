@@ -208,8 +208,8 @@ namespace SlackCIApp
                     // Check if we should download the installer
                     if (!string.IsNullOrEmpty(_settings.MacInstallerPath) && !string.IsNullOrEmpty(_settings.MacInstallerLocalPath))
                     {
-                        // SSH to Mac and copy installer to /home/Files/build-server
-                        string macNetworkPath = "/home/Files/build-server";
+                        // SSH to Mac and copy installer to BeeStation
+                        string macNetworkPath = "/Volumes/home/Files/build-server";
                         var copyCommand = $"mkdir -p {macNetworkPath} && cp {_settings.MacInstallerPath} {macNetworkPath}/";
                         using var client = new SshClient(_settings.MacHostname, _settings.MacUsername, new PrivateKeyFile(_settings.MacKeyPath));
                         client.Connect();

@@ -401,58 +401,29 @@ namespace SlackCIApp
                     var macVersionSync = SyncVersionToAdvancedInstaller();
                     string macVersion = macVersionSync.Version;
                     string macInstallerFileName = string.IsNullOrEmpty(macVersion)
-                        ? "Install basehead v2025.pkg"
+                        ? "Install basehead v2026.pkg"
                         : $"Install basehead v{macVersion}.pkg";
 
                     // Set Mac installer path based on convention with version
                     _settings.MacInstallerPath = $"/Users/steve/Desktop/GitHub/basehead/build/{macInstallerFileName}";
                     if (!string.IsNullOrEmpty(_settings.MacInstallerPath))
                     {
-                        // Download Mac installer via SCP and copy to BeeStation
-                        string localDownloadPath = Path.Combine(Directory.GetCurrentDirectory(), "downloads");
-                        if (!Directory.Exists(localDownloadPath))
+                        // Copy Mac installer directly to BeeStation from Mac
+                        SendSlackMessage($":arrow_down: Copying Mac installer to BeeStation...");
+
+                        var (copySuccess, fileSizeMB) = await sshService.CopyInstallerToNetworkAsync(_settings.MacInstallerPath, macInstallerFileName);
+                        if (copySuccess)
                         {
-                            Directory.CreateDirectory(localDownloadPath);
-                        }
-                        string localFilePath = Path.Combine(localDownloadPath, macInstallerFileName);
+                            SendSlackMessage($":file_folder: Mac installer copied to network: {macInstallerFileName} ({fileSizeMB:F2} MB)");
 
-                        Log.Information("Downloading Mac installer via SCP: {RemotePath} -> {LocalPath}", _settings.MacInstallerPath, localFilePath);
-                        SendSlackMessage($":arrow_down: Downloading Mac installer...");
-
-                        if (await sshService.DownloadInstallerAsync(_settings.MacInstallerPath, localFilePath))
-                        {
-                            var fileSize = new FileInfo(localFilePath).Length / (1024.0 * 1024.0);
-                            SendSlackMessage($":package: Mac installer downloaded: {macInstallerFileName} ({fileSize:F2} MB)");
-
-                            // Copy to BeeStation network path
-                            try
-                            {
-                                string networkPath = @"\\BeeStation\home\Files\build-server";
-                                string networkFilePath = Path.Combine(networkPath, macInstallerFileName);
-                                Log.Information("Copying Mac installer to network path: {NetworkPath}", networkFilePath);
-
-                                if (!Directory.Exists(networkPath))
-                                {
-                                    Directory.CreateDirectory(networkPath);
-                                }
-
-                                File.Copy(localFilePath, networkFilePath, true);
-                                SendSlackMessage($":file_folder: Mac installer copied to network: {macInstallerFileName}");
-
-                                // Add web download link
-                                string webDownloadUrl = "http://j8cd6qcvrjt956vxvyixiuoss2n6mes.quickconnect.to/sharing/fcRcMqktX";
-                                SendSlackMessage($":globe_with_meridians: Web download link: {webDownloadUrl}");
-                            }
-                            catch (Exception ex)
-                            {
-                                Log.Error(ex, "Failed to copy Mac installer to network path: {Error}", ex.Message);
-                                SendSlackMessage($":warning: Failed to copy Mac installer to network path: {ex.Message}");
-                            }
+                            // Add web download link
+                            string webDownloadUrl = "http://j8cd6qcvrjt956vxvyixiuoss2n6mes.quickconnect.to/sharing/fcRcMqktX";
+                            SendSlackMessage($":globe_with_meridians: Web download link: {webDownloadUrl}");
                         }
                         else
                         {
-                            Log.Warning("Failed to download Mac installer via SCP");
-                            SendSlackMessage($":warning: Failed to download Mac installer. File may be on Mac at: {_settings.MacInstallerPath}");
+                            Log.Warning("Failed to copy Mac installer to BeeStation");
+                            SendSlackMessage($":warning: Failed to copy Mac installer to BeeStation. File may be on Mac at: {_settings.MacInstallerPath}");
 
                             // Still show web download link
                             string webDownloadUrl = "http://j8cd6qcvrjt956vxvyixiuoss2n6mes.quickconnect.to/sharing/fcRcMqktX";
@@ -596,68 +567,42 @@ namespace SlackCIApp
                     Log.Information("macOS LLS build completed successfully");
                     SendSlackMessage(":white_check_mark: macOS LLS build completed successfully!");
 
-                    // Download the Mac installers
+                    // Copy Mac installers directly to BeeStation from Mac
                     try
                     {
-                        string networkPath = @"\\BeeStation\home\Files\build-server";
-
-                        // Download ARM64 installer
+                        // Copy ARM64 installer
                         string arm64RemotePath = $"{_settings.LLSMacRepoPath}/Installer/macOS/Install basehead.LLS v{version} (ARM64).pkg";
-                        string arm64LocalFileName = $"Install basehead.LLS v{version} (ARM64).pkg";
-                        string arm64LocalPath = Path.Combine(Path.GetTempPath(), arm64LocalFileName);
+                        string arm64FileName = $"Install basehead.LLS v{version} (ARM64).pkg";
 
-                        if (await sshService.DownloadInstallerAsync(arm64RemotePath, arm64LocalPath))
+                        var (arm64Success, arm64Size) = await sshService.CopyInstallerToNetworkAsync(arm64RemotePath, arm64FileName, "LLS");
+                        if (arm64Success)
                         {
-                            Log.Information("Downloaded ARM64 installer: {Path}", arm64LocalPath);
-
-                            // Copy to network
-                            if (Directory.Exists(networkPath))
-                            {
-                                string networkFilePath = Path.Combine(networkPath, arm64LocalFileName);
-                                File.Copy(arm64LocalPath, networkFilePath, true);
-                                var fileSize = new FileInfo(arm64LocalPath).Length / (1024.0 * 1024.0);
-                                SendSlackMessage($":file_folder: macOS ARM64 installer ({fileSize:F2} MB) copied to network");
-                            }
-
-                            // Clean up temp file
-                            File.Delete(arm64LocalPath);
+                            SendSlackMessage($":file_folder: macOS ARM64 installer ({arm64Size:F2} MB) copied to network");
                         }
                         else
                         {
-                            Log.Warning("Failed to download ARM64 installer from Mac");
-                            SendSlackMessage(":warning: Failed to download ARM64 installer from Mac");
+                            Log.Warning("Failed to copy ARM64 installer to BeeStation");
+                            SendSlackMessage(":warning: Failed to copy ARM64 installer to BeeStation");
                         }
 
-                        // Download Intel installer
+                        // Copy Intel installer
                         string x64RemotePath = $"{_settings.LLSMacRepoPath}/Installer/macOS/Install basehead.LLS v{version} (Intel).pkg";
-                        string x64LocalFileName = $"Install basehead.LLS v{version} (Intel).pkg";
-                        string x64LocalPath = Path.Combine(Path.GetTempPath(), x64LocalFileName);
+                        string x64FileName = $"Install basehead.LLS v{version} (Intel).pkg";
 
-                        if (await sshService.DownloadInstallerAsync(x64RemotePath, x64LocalPath))
+                        var (x64Success, x64Size) = await sshService.CopyInstallerToNetworkAsync(x64RemotePath, x64FileName, "LLS");
+                        if (x64Success)
                         {
-                            Log.Information("Downloaded Intel installer: {Path}", x64LocalPath);
-
-                            // Copy to network
-                            if (Directory.Exists(networkPath))
-                            {
-                                string networkFilePath = Path.Combine(networkPath, x64LocalFileName);
-                                File.Copy(x64LocalPath, networkFilePath, true);
-                                var fileSize = new FileInfo(x64LocalPath).Length / (1024.0 * 1024.0);
-                                SendSlackMessage($":file_folder: macOS Intel installer ({fileSize:F2} MB) copied to network");
-                            }
-
-                            // Clean up temp file
-                            File.Delete(x64LocalPath);
+                            SendSlackMessage($":file_folder: macOS Intel installer ({x64Size:F2} MB) copied to network");
                         }
                         else
                         {
-                            Log.Warning("Failed to download Intel installer from Mac");
-                            SendSlackMessage(":warning: Failed to download Intel installer from Mac");
+                            Log.Warning("Failed to copy Intel installer to BeeStation");
+                            SendSlackMessage(":warning: Failed to copy Intel installer to BeeStation");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Error downloading/copying Mac installers: {Error}", ex.Message);
+                        Log.Error(ex, "Error copying Mac installers to BeeStation: {Error}", ex.Message);
                         SendSlackMessage($":warning: Error handling Mac installers: {ex.Message}");
                     }
                 }
@@ -770,7 +715,7 @@ namespace SlackCIApp
                                 SendSlackMessage($":package: Linux package built: {fileName} ({fileSize:F2} MB)");
 
                                 // Copy to network path
-                                string networkPath = @"\\BeeStation\home\Files\build-server";
+                                string networkPath = @"\\BeeStation\home\Files\build-server\LLS";
                                 string versionedFileName = GetVersionedFileName(fileName, version);
                                 string networkFilePath = Path.Combine(networkPath, versionedFileName);
 
@@ -962,23 +907,39 @@ namespace SlackCIApp
 
         private Task HandleInstallerOutput(string projectPath, string buildType, string settingsInstallerPath, string version = "")
         {
-            string installerDir = Path.GetDirectoryName(projectPath) ?? Directory.GetCurrentDirectory();
-            string[] potentialOutputDirs = new[]
+            try
             {
-                Path.Combine(installerDir, "Output"),
-                Path.Combine(installerDir, "Builds"),
-                Path.Combine(installerDir, "Setup"),
-                installerDir
-            };
-            
-            string outputDir = potentialOutputDirs.FirstOrDefault(dir => Directory.Exists(dir)) ?? installerDir;
-            Log.Information($"Checking for {buildType} installer files in: {{Dir}}", outputDir);
-            
-            if (Directory.Exists(outputDir))
-            {
-                string[] installerFiles = Directory.GetFiles(outputDir, "*.exe")
-                    .Concat(Directory.GetFiles(outputDir, "*.msi"))
-                    .ToArray();
+                string installerDir = Path.GetDirectoryName(projectPath) ?? Directory.GetCurrentDirectory();
+                Log.Information($"HandleInstallerOutput called for {buildType}. Project: {{ProjectPath}}, InstallerDir: {{InstallerDir}}", projectPath, installerDir);
+
+                string[] potentialOutputDirs = new[]
+                {
+                    Path.Combine(installerDir, "Output"),
+                    Path.Combine(installerDir, "Builds"),
+                    Path.Combine(installerDir, "Setup"),
+                    installerDir
+                };
+
+                // Log which directories exist
+                foreach (var dir in potentialOutputDirs)
+                {
+                    Log.Information($"Checking if directory exists: {{Dir}} = {{Exists}}", dir, Directory.Exists(dir));
+                }
+
+                string outputDir = potentialOutputDirs.FirstOrDefault(dir => Directory.Exists(dir)) ?? installerDir;
+                Log.Information($"Checking for {buildType} installer files in: {{Dir}}", outputDir);
+
+                if (Directory.Exists(outputDir))
+                {
+                    string[] installerFiles = Directory.GetFiles(outputDir, "*.exe")
+                        .Concat(Directory.GetFiles(outputDir, "*.msi"))
+                        .ToArray();
+
+                    Log.Information($"Found {{Count}} installer files in {{Dir}}", installerFiles.Length, outputDir);
+                    foreach (var file in installerFiles)
+                    {
+                        Log.Information($"  - {{File}}", file);
+                    }
                 if (installerFiles.Length > 0)
                 {
                     var latestInstaller = installerFiles.OrderByDescending(f => new FileInfo(f).CreationTime).First();
@@ -997,7 +958,7 @@ namespace SlackCIApp
                     // Copy to network path with versioned filename
                     try
                     {
-                        string networkPath = @"\\BeeStation\home\Files\build-server";
+                        string networkPath = @"\\BeeStation\home\Files\build-server\LLS";
                         string versionedFileName = GetVersionedFileName(fileName, version);
                         string networkFilePath = Path.Combine(networkPath, versionedFileName);
                         Log.Information($"Copying {buildType} installer to network path: {{NetworkPath}}", networkFilePath);
@@ -1029,7 +990,13 @@ namespace SlackCIApp
             {
                 Log.Warning($"{buildType} output directory not found: {{Dir}}", installerDir);
             }
-            
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Error in HandleInstallerOutput for {buildType}: {{ErrorMessage}}", ex.Message);
+                SendSlackMessage($":warning: Error processing {buildType} installer output: {ex.Message}");
+            }
+
             return Task.CompletedTask;
         }
 
@@ -1354,8 +1321,7 @@ namespace SlackCIApp
         }
 
         /// <summary>
-        /// Creates a versioned filename for the installer
-        /// Example: "Install basehead v2025.exe" -> "Install basehead v2025.12.04.exe"
+        /// xe"
         /// </summary>
         private string GetVersionedFileName(string originalFileName, string version)
         {
@@ -1365,7 +1331,7 @@ namespace SlackCIApp
             string extension = Path.GetExtension(originalFileName);
             string nameWithoutExt = Path.GetFileNameWithoutExtension(originalFileName);
 
-            // Pattern: "Install basehead v2025" or similar - replace the version part
+            // Pattern: "Install basehead v2026" or similar - replace the version part
             var versionPattern = new Regex(@"(.*\s+v?)(\d{4})(\.\d+)?(\.\d+)?$", RegexOptions.IgnoreCase);
             var match = versionPattern.Match(nameWithoutExt);
 
@@ -1430,6 +1396,7 @@ namespace SlackCIApp
 
         /// <summary>
         /// Syncs the version from LLS csproj to the LLS Advanced Installer .aip file
+        /// Uses Advanced Installer command line to properly regenerate ProductCode and component GUIDs
         /// </summary>
         private (bool Success, string Version, string Message) SyncLLSVersionToAdvancedInstaller()
         {
@@ -1466,34 +1433,169 @@ namespace SlackCIApp
 
                 string aipContent = File.ReadAllText(aipPath);
 
-                // Use regex to find and replace ProductVersion value
-                var regex = new Regex(@"(<ROW Property=""ProductVersion"" Value="")([^""]+)("")");
-                var match = regex.Match(aipContent);
+                // Check current version in .aip file
+                var versionRegex = new Regex(@"<ROW Property=""ProductVersion"" Value=""([^""]+)""");
+                var versionMatch = versionRegex.Match(aipContent);
+                string oldVersion = versionMatch.Success ? versionMatch.Groups[1].Value : "";
 
-                if (!match.Success)
-                {
-                    Log.Warning("Could not find ProductVersion property in LLS .aip file");
-                    return (false, version, "Could not find ProductVersion property in LLS .aip file");
-                }
-
-                string oldVersion = match.Groups[2].Value;
                 if (oldVersion == version)
                 {
                     Log.Information("LLS Advanced Installer version already matches: {Version}", version);
                     return (true, version, $"LLS AI version already up to date: {version}");
                 }
 
-                // Replace the version
-                string newContent = regex.Replace(aipContent, $"${{1}}{version}${{3}}");
-                File.WriteAllText(aipPath, newContent);
+                // Ensure AI_UPGRADE is set to "Yes" for major upgrade support (do this before AI command line)
+                bool aipModified = false;
+                if (aipContent.Contains(@"<ROW Property=""AI_UPGRADE"" Value=""No""/>"))
+                {
+                    aipContent = aipContent.Replace(@"<ROW Property=""AI_UPGRADE"" Value=""No""/>", @"<ROW Property=""AI_UPGRADE"" Value=""Yes""/>");
+                    aipModified = true;
+                    Log.Information("Changed AI_UPGRADE from No to Yes for LLS installer");
+                }
+                else if (!aipContent.Contains(@"<ROW Property=""AI_UPGRADE"""))
+                {
+                    // AI_UPGRADE property doesn't exist at all - need to add it after UpgradeCode
+                    var upgradeCodePattern = @"(<ROW Property=""UpgradeCode"" Value=""[^""]+""[^/]*/\s*>)";
+                    var upgradeCodeRegex = new Regex(upgradeCodePattern);
+                    if (upgradeCodeRegex.IsMatch(aipContent))
+                    {
+                        aipContent = upgradeCodeRegex.Replace(aipContent, "$1\n    <ROW Property=\"AI_UPGRADE\" Value=\"Yes\"/>");
+                        aipModified = true;
+                        Log.Information("Added AI_UPGRADE=Yes property for LLS installer");
+                    }
+                }
 
-                Log.Information("Updated LLS Advanced Installer version from {OldVersion} to {NewVersion}", oldVersion, version);
+                if (aipModified)
+                {
+                    File.WriteAllText(aipPath, aipContent);
+                }
+
+                // Use Advanced Installer command line to set version and regenerate ProductCode + component GUIDs
+                // This is the proper way to handle major upgrades
+                string aiExePath = _settings.AdvancedInstallerExePath;
+                if (!File.Exists(aiExePath))
+                {
+                    Log.Warning("Advanced Installer not found at: {Path}, falling back to manual edit", aiExePath);
+                    return FallbackLLSManualVersionUpdate(aipPath, version, oldVersion);
+                }
+
+                Log.Information("Using Advanced Installer CLI to update LLS version and regenerate GUIDs...");
+
+                // First set the version (this triggers GUID regeneration in AI)
+                var setVersionProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = aiExePath,
+                        Arguments = $"/edit \"{aipPath}\" /SetVersion {version}",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                setVersionProcess.Start();
+                string versionOutput = setVersionProcess.StandardOutput.ReadToEnd();
+                string versionError = setVersionProcess.StandardError.ReadToEnd();
+                setVersionProcess.WaitForExit();
+
+                if (setVersionProcess.ExitCode != 0)
+                {
+                    Log.Warning("SetVersion command failed for LLS: {Error}, falling back to manual edit", versionError);
+                    return FallbackLLSManualVersionUpdate(aipPath, version, oldVersion);
+                }
+
+                Log.Information("LLS SetVersion output: {Output}", versionOutput);
+
+                // Then set new ProductCode (auto-generates if no GUID specified)
+                var setProductCodeProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = aiExePath,
+                        Arguments = $"/edit \"{aipPath}\" /SetProductCode -langid 1033",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                setProductCodeProcess.Start();
+                string productCodeOutput = setProductCodeProcess.StandardOutput.ReadToEnd();
+                string productCodeError = setProductCodeProcess.StandardError.ReadToEnd();
+                setProductCodeProcess.WaitForExit();
+
+                if (setProductCodeProcess.ExitCode != 0)
+                {
+                    Log.Warning("SetProductCode command returned for LLS: {Error}", productCodeError);
+                }
+                else
+                {
+                    Log.Information("LLS SetProductCode output: {Output}", productCodeOutput);
+                }
+
+                Log.Information("Updated LLS Advanced Installer version from {OldVersion} to {NewVersion} using CLI", oldVersion, version);
                 return (true, version, $"Updated LLS AI version from {oldVersion} to {version}");
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error syncing LLS version to Advanced Installer");
                 return (false, "", $"Error syncing LLS version: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Fallback method to manually update LLS version and ProductCode when AI CLI is not available
+        /// </summary>
+        private (bool Success, string Version, string Message) FallbackLLSManualVersionUpdate(string aipPath, string version, string oldVersion)
+        {
+            try
+            {
+                string aipContent = File.ReadAllText(aipPath);
+
+                // Update ProductVersion
+                var regex = new Regex(@"(<ROW Property=""ProductVersion"" Value="")([^""]+)("")");
+                string newContent = regex.Replace(aipContent, $"${{1}}{version}${{3}}");
+
+                // Generate new ProductCode GUID
+                var productCodeRegex = new Regex(@"(<ROW Property=""ProductCode"" Value=""1033:)(\{[A-F0-9\-]+\})("" Type=""16""/>)");
+                var productCodeMatch = productCodeRegex.Match(newContent);
+                if (productCodeMatch.Success)
+                {
+                    string newGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();
+                    newContent = productCodeRegex.Replace(newContent, $"${{1}}{newGuid}${{3}}");
+                    Log.Information("Generated new ProductCode for LLS (fallback): {ProductCode}", newGuid);
+                }
+
+                // Ensure AI_UPGRADE is Yes - either replace existing or add if missing
+                if (newContent.Contains(@"<ROW Property=""AI_UPGRADE"" Value=""No""/>"))
+                {
+                    newContent = newContent.Replace(@"<ROW Property=""AI_UPGRADE"" Value=""No""/>", @"<ROW Property=""AI_UPGRADE"" Value=""Yes""/>");
+                }
+                else if (!newContent.Contains(@"<ROW Property=""AI_UPGRADE"""))
+                {
+                    // Add AI_UPGRADE property after UpgradeCode
+                    var upgradeCodePattern = @"(<ROW Property=""UpgradeCode"" Value=""[^""]+""[^/]*/\s*>)";
+                    var upgradeCodeRegex = new Regex(upgradeCodePattern);
+                    if (upgradeCodeRegex.IsMatch(newContent))
+                    {
+                        newContent = upgradeCodeRegex.Replace(newContent, "$1\n    <ROW Property=\"AI_UPGRADE\" Value=\"Yes\"/>");
+                        Log.Information("Added AI_UPGRADE=Yes property for LLS installer (fallback)");
+                    }
+                }
+
+                File.WriteAllText(aipPath, newContent);
+
+                Log.Warning("Used fallback manual version update for LLS - component GUIDs were NOT regenerated");
+                Log.Warning("For proper major upgrade support, ensure Advanced Installer CLI is available");
+                return (true, version, $"Updated LLS AI version from {oldVersion} to {version} (fallback mode - component GUIDs not updated)");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Fallback LLS version update failed");
+                return (false, "", $"Fallback LLS version update failed: {ex.Message}");
             }
         }
     }

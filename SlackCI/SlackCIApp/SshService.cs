@@ -117,7 +117,7 @@ namespace SlackCIApp
                 var output = new StringBuilder();
                 bool buildComplete = false;
                 int timeoutCounter = 0;
-                int maxTimeout = 1000; // 16.67 minutes timeout (1000 seconds with 1-second checks)
+                int maxTimeout = 1800; // 30 minutes timeout (1800 seconds with 1-second checks)
                 
                 while (!buildComplete && timeoutCounter < maxTimeout)
                 {
@@ -445,6 +445,53 @@ namespace SlackCIApp
                     return false;
                 }
             });
+        }
+
+        /// <summary>
+        /// Copies an installer file on the Mac directly to the BeeStation network share
+        /// </summary>
+        public async Task<(bool Success, double FileSizeMB)> CopyInstallerToNetworkAsync(string remotePath, string destinationFileName, string? subfolder = null)
+        {
+            var networkPath = string.IsNullOrEmpty(subfolder)
+                ? "/Volumes/home/Files/build-server"
+                : $"/Volumes/home/Files/build-server/{subfolder}";
+            _logger.Information("Copying Mac installer to BeeStation: {RemotePath} -> {NetworkPath}/{FileName}", remotePath, networkPath, destinationFileName);
+
+            try
+            {
+                using var client = new SshClient(_settings.MacHostname, _settings.MacUsername, new PrivateKeyFile(_settings.MacKeyPath));
+                await Task.Run(() => client.Connect());
+
+                if (!client.IsConnected)
+                {
+                    _logger.Error("Failed to connect to Mac via SSH");
+                    return (false, 0);
+                }
+
+                // Ensure destination directory exists and copy
+                var copyResult = await Task.Run(() => client.RunCommand($"mkdir -p \"{networkPath}\" && cp \"{remotePath}\" \"{networkPath}/{destinationFileName}\""));
+                if (copyResult.ExitStatus != 0)
+                {
+                    _logger.Error("Failed to copy installer on Mac: {Error}", copyResult.Error);
+                    return (false, 0);
+                }
+
+                // Get file size
+                var statResult = await Task.Run(() => client.RunCommand($"stat -f%z \"{networkPath}/{destinationFileName}\""));
+                double fileSizeMB = 0;
+                if (statResult.ExitStatus == 0 && long.TryParse(statResult.Result.Trim(), out long bytes))
+                {
+                    fileSizeMB = bytes / (1024.0 * 1024.0);
+                }
+
+                _logger.Information("Successfully copied installer to BeeStation ({Size:F2} MB)", fileSizeMB);
+                return (true, fileSizeMB);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error copying installer to BeeStation: {ErrorMessage}", ex.Message);
+                return (false, 0);
+            }
         }
 
         /// <summary>
